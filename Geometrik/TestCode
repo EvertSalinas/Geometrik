@@ -1,0 +1,16 @@
+program TestCode;
+
+var a,b,r : int;
+
+function int test() {
+    if(a <= 4){
+
+    }
+    else{
+
+    }
+}
+
+{
+    test();
+}
