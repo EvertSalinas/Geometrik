@@ -1,2 +1,7 @@
 # .idea files
 .idea/
+/.idea
+
+*/*.out
+*/*.pyc
+Parserlexer/parsetab.py

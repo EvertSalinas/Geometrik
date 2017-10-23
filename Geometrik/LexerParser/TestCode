@@ -1,0 +1,12 @@
+program main;
+
+var int a, h;
+var float g;
+
+function int test() {
+    if(a) {}
+}
+
+{
+    test();
+}

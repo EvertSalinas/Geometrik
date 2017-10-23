@@ -1,10 +1,10 @@
-############ HashTable helper functions
+# HashTable helper functions
 def hash_function(key, size):
     return sum([ord(c) for c in key]) % size
 
 
-############ HashTable class
-class varsTable:
+# HashTable class
+class funcDirectory:
     """ Hash table which uses strings for keys. Value can be any object.
     Example usage:
         ht = HashTable(10)
@@ -35,27 +35,27 @@ class varsTable:
 
         return find_result_func(found_item, hash_table_cell)
 
-    def insert(self, key, type, value):
-        """ Insert object with key into hash table. If key already exists, notify that it exists.
+    def insert(self, key, type, varstable):
+        """ Insert object with key into hash table. If key already exists, notify that the record exists.
         Key must be a string. Returns self. """
 
         def find_result_func(found_item, hash_table_cell):
             if found_item:
                 print("Este identificador ya existe")
             else:
-                hash_table_cell.append([key, type, value])
+                hash_table_cell.append([key, type, varstable])
                 self.size += 1
                 self._keys.append(key)
 
         self._find_by_key(key, find_result_func)
         return self
 
-    def lookup(self, key):
+    def lookup(self, key, varkey):
         """ Get object with key (key must be a string). If not found, it will raise a KeyError. """
 
         def find_result_func(found_item, _):
             if found_item:
-                return (key, found_item[1], found_item[2])
+                return (key, found_item[1], found_item[2].lookup(varkey))
             else:
                 raise KeyError(key)
 
