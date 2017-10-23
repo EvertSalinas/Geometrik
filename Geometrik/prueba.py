@@ -1,13 +1,13 @@
-from VariablesTable import varsTable
-from FunctionsDirectory import funcDirectory
+from Directories.VariablesTable import VarsTable
 
 # Create functions directory with capacity for 1000 records
-FunctionsDirectory = funcDirectory()
+#FunctionsDirectory = funcDirectory()
 
 # Create variables table with capacity for 1000 records
-globalVariables = varsTable()
+globalVariables = VarsTable()
 
 # Insert reserved words to prevent them being used as identifiers
+'''
 globalVariables.insert("if", "if", "if")
 globalVariables.insert("else", "else", "else")
 globalVariables.insert("while", "while", "while")
@@ -37,12 +37,10 @@ globalVariables.insert("string", "string", "string")
 globalVariables.insert("void", "void", "void")
 globalVariables.insert("input", "input", "input")
 globalVariables.insert("var", "var", "var")
+'''
 
-FunctionsDirectory.insert("global", "void", globalVariables)
-FunctionsDirectory.insert("facebook")
+globalVariables.insert("nombre", "int", "2000")
 
-print(FunctionsDirectory.lookup('DrawCircle', "Green"))
-
-print(globalVariables.lookup('int'))
-
+print(globalVariables.get('nombre'))
+print(globalVariables.getVarsTotals())
 
