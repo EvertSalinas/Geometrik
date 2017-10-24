@@ -8,7 +8,7 @@ class VarsTable:
                     'boolean': 0,
                     'string': 0
                 },
-            'temp_total':
+            'temporal_total':
                 {
                     'int': 0,
                     'float': 0,
@@ -17,57 +17,59 @@ class VarsTable:
                 }
         }
 
-    def insert(self, name, Type, virtualAddress):
-        self.variables[name] = [Type, virtualAddress]
-        self.addVarsTotals(Type)
+    # Insert new variable to the table
+    def insert(self, name, type, virtualAddress):
+        self.variables[name] = [type, virtualAddress]
+        self.addVariableToTotal(type)
 
+    # Check if variable exists
     def lookup(self, name):
         return self.variables.has_key(name)
 
+    # Return variable's values
     def get(self, name):
         if self.variables.has_key(name):
             return (name, self.variables[name])
         else:
             return None
 
-    def getVarsTotals(self):
+    # Return the total of variables
+    def getTotalVariables(self):
         return self.variables['total']
 
-    def getTempTotals(self):
-        return self.variables['temp_total']
+    # Return the total of temporals
+    def getTotalTemporals(self):
+        return self.variables['temporal_total']
 
-    def addVarsTotals(self, Type):
+    # Increment the amount of variables of a given type
+    def addVariableToTotal(self, type):
         totals = self.variables['total']
-        totals[Type] += 1
+        totals[type] += 1
 
-    def addTempType(self, Type):
-        temp_totals = self.variables['temp_total']
-        temp_totals[Type] += 1
+    # Increment the amount of temporals of a given type
+    def addTempToTotal(self, type):
+        temp_totals = self.variables['temporal_total']
+        temp_totals[type] += 1
 
+    # Search by virtual address and return id if exists
     def getIdByAddress(self, virtualAddress):
         for variable in self.variables:
-            if variable != 'total' and variable != 'temp_total':
+            if variable != 'total' and variable != 'temporal_total':
                 variableInfo = self.variables[variable]
 
                 if virtualAddress in variableInfo:
                     return variable
 
+    # Add dimensions to a variable if it is an array
     def addDimensionToVariable(self, name, dimension):
-
-        # if len(self.variables[variableName]) > 2:
-        #     variableProperties = self.variables[variableName]
-        #
-        #     dimensions = variableProperties[2]
-        #
-        #     dimensions[2] =
 
         self.variables[name].append({
             'dimensions': {
-                1
-                : dimension
+                1 : dimension
             }
         })
 
+    # Return the dimensions to a variable
     def getDimensionsFromVariable(self, name):
         try:
             variable = self.variables[name]

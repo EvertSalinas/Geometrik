@@ -1,100 +1,96 @@
-# HashTable helper functions
-def hash_function(key, size):
-    return sum([ord(c) for c in key]) % size
+from VariablesTable import VarsTable
 
+class FunctionsDirectory:
+    def __init__(self):
+        self.functions = {}
 
-# HashTable class
-class funcDirectory:
-    """ Hash table which uses strings for keys. Value can be any object.
-    Example usage:
-        ht = HashTable(10)
-        ht.set('a', 1).set('b', 2).set('c', 3)
-        ht['c'] = 30
-    """
+    # Insert function to the directory
+    def insert(self, functionName, type):
+        self.functions[functionName] = {'type': type, 'parameters_types':[], 'parameter_addresses': [], 'variables': VarsTable()}
 
-    def __init__(self, capacity=1000):
-        """ Capacity defaults to 1000. """
+    # check if function exists
+    def lookup(self, functionName):
+        return self.functions.has_key(functionName)
 
-        self.capacity = capacity
-        self.size = 0
-        self._keys = []
-        # Storage format: [ [ [key1, value], [key2, value] ], [ [key3, value] ] ]
-        # The outmost list is the one which the hash function maps the index to. The next inner
-        # Array is the list of objects in that storage cell. The 3rd level is the individual
-        # item array, where the 1st item is the key, and the 2nd item is the value.
-        self.data = [[] for _ in range(capacity)]
+    # Return the type of a function
+    def getFunctionType(self, functionName):
+        function = self.functions[functionName]
+        return function['type']
 
-    def _find_by_key(self, key, find_result_func):
-        index = hash_function(key, self.capacity)
-        hash_table_cell = self.data[index]
-        found_item = None
-        for item in hash_table_cell:
-            if item[0] == key:
-                found_item = item
-                break
+    # Add list of parameter types to a function record
+    def addParameterTypes(self, functionName, parameterTypeList):
+        if self.functionExists(functionName):
+            function = self.functions[functionName]
+            function['parameters_types'] += parameterTypeList
 
-        return find_result_func(found_item, hash_table_cell)
+    # Add list of parameter addresses to a function record
+    def addParameterAddress(self, functionName, parameterAddressList):
+        if self.functionExists(functionName):
+            function = self.functions[functionName]
+            function['parameter_addresses'] += parameterAddressList
 
-    def insert(self, key, type, varstable):
-        """ Insert object with key into hash table. If key already exists, notify that the record exists.
-        Key must be a string. Returns self. """
+    # Return list of parameter types
+    def getParameterTypes(self, functionName):
+        function = self.functions[functionName]
+        return function['parameters_types']
 
-        def find_result_func(found_item, hash_table_cell):
-            if found_item:
-                print("Este identificador ya existe")
-            else:
-                hash_table_cell.append([key, type, varstable])
-                self.size += 1
-                self._keys.append(key)
+    # Return list of parameter addresses
+    def getParameterAddresses(self, functionName):
+        function = self.functions[functionName]
+        return function['parameter_addresses']
 
-        self._find_by_key(key, find_result_func)
-        return self
+    # Validate parameters types match from functioncall
+    def validateParameters(self, functionName, argumentTypeList):
+        function = self.functions[functionName]
 
-    def lookup(self, key, varkey):
-        """ Get object with key (key must be a string). If not found, it will raise a KeyError. """
+        if self.functionExists(functionName):
+            return function['parameters_types'] == argumentTypeList
 
-        def find_result_func(found_item, _):
-            if found_item:
-                return (key, found_item[1], found_item[2].lookup(varkey))
-            else:
-                raise KeyError(key)
+    # Add starting quadruple
+    def addStartingQuad(self, functionName, quadruple):
+        function = self.functions[functionName]
+        function['starting_quadruple'] = quadruple
 
-        return self._find_by_key(key, find_result_func)
+    # Return starting quadruple
+    def getFunctionStartingQuad(self, functionName):
+        function = self.functions[functionName]
+        return function['starting_quadruple']
 
-    def remove(self, key):
-        """ Remove the object associated with key from the hashtable. If found, the object will
-        be returned. If not found, KeyError will be raised. """
+    # Insert variable to the VarsTable of a function
+    def addFunctionVariable(self, functionName, variableName, variableType, address):
+        function = self.functions[functionName]
 
-        def find_result_func(found_item, hash_table_cell):
-            if found_item:
-                hash_table_cell.remove(found_item)
-                self._keys.remove(key)
-                self.size -= 1
-                return found_item[1]
-            else:
-                raise KeyError(key)
+        if function['variables'].lookup(variableName):
+            return False
+        else:
+            function['variables'].insert(variableName, variableType, address)
+            return True
 
-        return self._find_by_key(key, find_result_func)
+    # Return variable from a VarsTable of a function
+    def getVariable(self, functionName, variableName):
+        function = self.functions[functionName]
+        variables = function["variables"]
 
-    ####### Python's dict interface
+        variable = variables.get(variableName)
 
-    def keys(self):
-        return self._keys
+        return variable
 
-    def __setitem__(self, key, value):
-        self.set(key, value)
+    # Insert temporal variable to the VarsTable of a function
+    def addTempVariable(self, functionName, variableType):
+        function = self.functions[functionName]
+        function['variables'].addTempToTotal(variableType)
 
-    def __getitem__(self, key):
-        return self.get(key)
+    # Search by virtual address and return id if exists
+    def getFunctionIdByAddress(self, globalScopeName, virtualAddress):
+        function = self.functions[globalScopeName]
+        return function['variables'].getIdByAddress(virtualAddress)
 
-    def __delitem__(self, key):
-        return self.remove(key)
+    # Add dimensions to a variable if it is an array
+    def addDimensionToVariable(self, functionName, variableName, dimension):
+        function = self.functions[functionName]
+        function['variables'].addDimensionToVariable(variableName, dimension)
 
-    def __repr__(self):
-        return '{ ' + ', '.join([key + ':' + str(self.get(key)) for key in self._keys]) + ' }'
-
-if __name__ == "__main__":
-    # Run unit tests
-    import unittest
-    testsuite = unittest.TestLoader().discover('test', pattern="*hashtable*")
-    unittest.TextTestRunner(verbosity=1).run(testsuite)
+    # Return the dimensions from a variable
+    def getDimensions(self, functionName, variableName):
+        function = self.functions[functionName]
+        return function['variables'].getDimensionsFromVariable(variableName)

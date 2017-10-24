@@ -39,8 +39,10 @@ globalVariables.insert("input", "input", "input")
 globalVariables.insert("var", "var", "var")
 '''
 
-globalVariables.insert("nombre", "int", "2000")
+globalVariables.insert("a", "int", "2000")
+globalVariables.insert("b", "boolean", "2001")
+globalVariables.insert("c", "string", "2002")
+globalVariables.insert("d", "float", "2003")
 
-print(globalVariables.get('nombre'))
-print(globalVariables.getVarsTotals())
+print(globalVariables.getIdByAddress('2000'))
 
