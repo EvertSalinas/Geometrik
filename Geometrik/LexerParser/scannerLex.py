@@ -47,7 +47,7 @@ tokens = tokens+list(reserved.values())
 
 # Ignored characters
 
-t_ignore = ' '
+t_ignore = ' \t\r'
 
 t_PLUS = r'\+'
 t_MINUS = r'\-'

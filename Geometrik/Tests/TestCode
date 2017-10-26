@@ -1,0 +1,10 @@
+program test;
+
+function void a() {
+    a = b;
+}
+
+int main() {
+    c = 1;
+    d = input;
+}

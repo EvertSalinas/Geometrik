@@ -1,4 +1,4 @@
-class VarsTable:
+class vars_Table:
     def __init__(self):
         self.variables = {
             'total':
@@ -59,26 +59,3 @@ class VarsTable:
 
                 if virtualAddress in variableInfo:
                     return variable
-
-    # Add dimensions to a variable if it is an array
-    def addDimensionToVariable(self, name, dimension):
-
-        self.variables[name].append({
-            'dimensions': {
-                1 : dimension
-            }
-        })
-
-    # Return the dimensions to a variable
-    def getDimensionsFromVariable(self, name):
-        try:
-            variable = self.variables[name]
-        except (KeyError):
-            return None
-
-        if len(self.variables[name]) > 2:
-            variableProperties = self.variables[name]
-
-            return variableProperties[2]
-        else:
-            return None

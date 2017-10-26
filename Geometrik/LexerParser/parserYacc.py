@@ -1,6 +1,32 @@
-from scannerLex import tokens
 import ply.yacc as yacc
 import sys
+
+sys.path.append("..")
+
+from scannerLex import tokens
+from DataStructures.FunctionsDirectory import functions_Directory
+from DataStructures.Stack import Stack
+from DataStructures.VariablesTable import vars_Table
+from DataStructures.Quadruple import Quadruple
+from DataStructures.Queue import Queue
+from SemanticCube.SemanticCube import semantic_Cube
+
+#-----------------------------------------------------------------
+
+functionsDirectory = functions_Directory();
+semanticCube = semantic_Cube();
+
+currentScope = ""
+globalScope = ""
+quadCont = 1
+tempCont = 0
+
+operatorsStack = Stack()
+operandsStack = Stack()
+typesStack = Stack()
+quadCont = []
+jumpsStack = Stack()
+
 
 # Precedence rules
 precedence = (
@@ -14,10 +40,17 @@ precedence = (
 # Grammar rules
 def p_PROGRAM(p):
     '''
-    program : PROGRAM MAIN SEMICOLON programvars programfunction block
-            | condition
+    program : PROGRAM ID SEMICOLON programvars programfunction main
+    | assignment
+    | read
     '''
+
     print("Correct Sintax.")
+
+def p_MAIN(p):
+    '''
+    main : INTTYPE MAIN LPAREN RPAREN block
+    '''
 
 def p_PROGRAMVARS(p):
     '''
@@ -107,8 +140,48 @@ def p_ARRAYPRIMA(p):
 
 def p_ASSIGNMENT(p):
     '''
-    assignment : ID assignmentarray ASSIGN assignmentprima SEMICOLON
+    assignment : ID push_id_operand ASSIGN push_operator singularexp2 SEMICOLON
     '''
+
+def p_push_id_operand(p):
+    '''
+    push_id_operand :
+    '''
+    print(p[-1])
+
+    '''
+    global currentScope
+    
+    variable = functionsDirectory.getVariable(currentScope, p[-1])
+
+    if variable is None:
+        variable = functionsDirectory.getVariable(globalScope, p[-1])
+
+        if variable is None:
+            print('Error: variable {0} not declared in line {1}'.format(p[-1], p.lexer.lineno))
+            sys.exit('variable_not_declared')
+        else:
+            variableInfo = variable[1]
+
+            operandsStack.push(variableInfo[1])
+            typesStack.push(variableInfo[0])
+    else:
+        variableInfo = variable[1]
+
+        operandsStack.push(variableInfo[1])
+        typesStack.push(variableInfo[0])
+
+    print(operandsStack.push())
+    '''
+
+def p_push_operator(p):
+    '''
+    push_operator :
+    '''
+
+    operatorsStack.push(p[-1])
+    print(operatorsStack.top())
+
 
 def p_ASSIGNMENT_ARRAY(p):
     '''
@@ -226,7 +299,7 @@ def p_WRITE(p):
 
 def p_READ(p):
     '''
-    read : ID ASSIGN INPUT SEMICOLON
+    read : ID push_id_operand ASSIGN push_operator INPUT SEMICOLON
     '''
 
 def p_CYCLE(p):
@@ -299,7 +372,7 @@ parser = yacc.yacc()
 #print("Filename or path: ")
 #filename = raw_input()
 
-file = open("TestCode", 'r')
+file = open("../Tests/TestCode", 'r')
 
 parser.parse(file.read())
 
