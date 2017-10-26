@@ -1,10 +1,23 @@
-from Directories.VariablesTable import VarsTable
+from DataStructures.VariablesTable import VarsTable
+from DataStructures.FunctionsDirectory import FunctionsDirectory
 
-# Create functions directory with capacity for 1000 records
-#FunctionsDirectory = funcDirectory()
-
-# Create variables table with capacity for 1000 records
+funcDirectory = FunctionsDirectory()
 globalVariables = VarsTable()
+
+funcDirectory.insert('func1', 'void')
+funcDirectory.addParameterTypes('func1', ['int', 'float', 'string'])
+
+funcDirectory.insert('func2', 'int')
+funcDirectory.addParameterTypes('func2', ['int', 'boolean'])
+
+parameters = funcDirectory.functions['func1']
+parameters2 = funcDirectory.functions['func2']
+
+funcDirectory.addFunctionVariable('func1','y','float','2000')
+
+variable = funcDirectory.getVariable('func1', 'y')
+
+print(variable)
 
 # Insert reserved words to prevent them being used as identifiers
 '''
@@ -38,11 +51,3 @@ globalVariables.insert("void", "void", "void")
 globalVariables.insert("input", "input", "input")
 globalVariables.insert("var", "var", "var")
 '''
-
-globalVariables.insert("a", "int", "2000")
-globalVariables.insert("b", "boolean", "2001")
-globalVariables.insert("c", "string", "2002")
-globalVariables.insert("d", "float", "2003")
-
-print(globalVariables.getIdByAddress('2000'))
-

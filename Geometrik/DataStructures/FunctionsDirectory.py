@@ -1,12 +1,12 @@
-from VariablesTable import VarsTable
+from VariablesTable import vars_Table
 
-class FunctionsDirectory:
+class functions_Directory:
     def __init__(self):
         self.functions = {}
 
     # Insert function to the directory
     def insert(self, functionName, type):
-        self.functions[functionName] = {'type': type, 'parameters_types':[], 'parameter_addresses': [], 'variables': VarsTable()}
+        self.functions[functionName] = {'type': type, 'parameters_types':[], 'parameter_addresses': [], 'variables': vars_Table()}
 
     # check if function exists
     def lookup(self, functionName):
@@ -19,13 +19,13 @@ class FunctionsDirectory:
 
     # Add list of parameter types to a function record
     def addParameterTypes(self, functionName, parameterTypeList):
-        if self.functionExists(functionName):
+        if self.lookup(functionName):
             function = self.functions[functionName]
             function['parameters_types'] += parameterTypeList
 
     # Add list of parameter addresses to a function record
     def addParameterAddress(self, functionName, parameterAddressList):
-        if self.functionExists(functionName):
+        if self.lookup(functionName):
             function = self.functions[functionName]
             function['parameter_addresses'] += parameterAddressList
 
@@ -43,7 +43,7 @@ class FunctionsDirectory:
     def validateParameters(self, functionName, argumentTypeList):
         function = self.functions[functionName]
 
-        if self.functionExists(functionName):
+        if self.lookup(functionName):
             return function['parameters_types'] == argumentTypeList
 
     # Add starting quadruple
@@ -84,13 +84,3 @@ class FunctionsDirectory:
     def getFunctionIdByAddress(self, globalScopeName, virtualAddress):
         function = self.functions[globalScopeName]
         return function['variables'].getIdByAddress(virtualAddress)
-
-    # Add dimensions to a variable if it is an array
-    def addDimensionToVariable(self, functionName, variableName, dimension):
-        function = self.functions[functionName]
-        function['variables'].addDimensionToVariable(variableName, dimension)
-
-    # Return the dimensions from a variable
-    def getDimensions(self, functionName, variableName):
-        function = self.functions[functionName]
-        return function['variables'].getDimensionsFromVariable(variableName)
