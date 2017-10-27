@@ -1,10 +1,12 @@
 program test;
 
-function void a() {
-    a = b;
-}
+var float a;
+var string d;
+var boolean g;
 
 int main() {
-    c = 1;
+    a = 1.0;
     d = input;
+    g = true;
+    print(a);
 }

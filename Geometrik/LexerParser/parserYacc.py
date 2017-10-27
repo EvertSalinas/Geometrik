@@ -13,20 +13,30 @@ from SemanticCube.SemanticCube import semantic_Cube
 
 #-----------------------------------------------------------------
 
+# Directories
 functionsDirectory = functions_Directory();
 semanticCube = semantic_Cube();
 
+# Scope management variables
 currentScope = ""
 globalScope = ""
+
+# Counter variables
 quadCont = 1
 tempCont = 0
 
+# Stacks
 operatorsStack = Stack()
 operandsStack = Stack()
 typesStack = Stack()
-quadCont = []
 jumpsStack = Stack()
 
+# Queues
+quadQueue = Queue()
+
+# Dimension management variables
+dimension = {}
+dimensionVar = ""
 
 # Precedence rules
 precedence = (
@@ -40,17 +50,46 @@ precedence = (
 # Grammar rules
 def p_PROGRAM(p):
     '''
-    program : PROGRAM ID SEMICOLON programvars programfunction main
-    | assignment
-    | read
+    program : PROGRAM ID add_global_func SEMICOLON programvars programfunction main
     '''
 
     print("Correct Sintax.")
 
+def p_add_global_func(p):
+    '''add_global_func : '''
+
+    global currentScope
+    global globalScope
+
+    # Save the current function name
+    globalScope = p[-1]
+    currentScope = p[-1]
+
+    # Create function directory variable
+    functionsDirectory.insert(currentScope, 'void')
+    print("add_global_func", currentScope, functionsDirectory.getFunctionType(currentScope))
+
+    # a = functionsDirectory.getFunctionType(currentScope)
+    # print(a)
+
 def p_MAIN(p):
     '''
-    main : INTTYPE MAIN LPAREN RPAREN block
+    main : INTTYPE MAIN LPAREN RPAREN switch_to_global_scope block
     '''
+
+def p_switch_to_global_scope(p):
+    '''
+    switch_to_global_scope :
+    '''
+
+    global currentScope
+    global globalScope
+
+    # Switch to global scope
+    currentScope = globalScope
+
+    #functionsDirectory.addStartingQuad(globalScope, quadCont)
+    #print("switch_to_global_scope", functionsDirectory.getStartingQuad(currentScope))
 
 def p_PROGRAMVARS(p):
     '''
@@ -106,15 +145,31 @@ def p_CONDPRIMAAUX(p):
 
 def p_VARS(p):
     '''
-    vars : VAR type varsprima SEMICOLON
+    vars : VAR type ID array store_variable SEMICOLON
     '''
 
-def p_VARSPRIMA(p):
+def p_ARRAY(p):
     '''
-    varsprima : ID
-              | ID COMMA varsprima
-              | empty
+    array : LBRACKET singularexp2 RBRACKET
+          | empty
     '''
+
+def p_store_variable(p):
+    '''
+    store_variable :
+    '''
+
+    global currentScope
+
+    # Get varable name and type
+    varName = p[-2]
+    varType = p[-3]
+
+    # varName needs to be change to virtual address
+    if not functionsDirectory.addFunctionVariable(currentScope, varName, varType, varName):
+        print('Error, variable already declared')
+
+    print("store_variable",currentScope, functionsDirectory.getFunctionVariable(currentScope, varName))
 
 def p_TYPE(p):
     '''
@@ -122,65 +177,62 @@ def p_TYPE(p):
          | FLOATTYPE
          | STRINGTYPE
          | BOOLEANTYPE
-         | array
     '''
-
-def p_ARRAY(p):
-    '''
-    array : INTTYPE arrayprima
-          | FLOATTYPE arrayprima
-          | STRINGTYPE arrayprima
-    '''
-
-def p_ARRAYPRIMA(p):
-    '''
-    arrayprima : LBRACKET INT RBRACKET
-    '''
+    p[0] = p[1]
 
 
 def p_ASSIGNMENT(p):
     '''
     assignment : ID push_id_operand ASSIGN push_operator singularexp2 SEMICOLON
     '''
+    print("assignment:")
+    createQuad(p)
 
 def p_push_id_operand(p):
     '''
     push_id_operand :
     '''
-    print(p[-1])
 
-    '''
+    varId = p[-1]
+
     global currentScope
-    
-    variable = functionsDirectory.getVariable(currentScope, p[-1])
 
-    if variable is None:
-        variable = functionsDirectory.getVariable(globalScope, p[-1])
+    funcVar = functionsDirectory.getFunctionVariable(currentScope, varId)
 
-        if variable is None:
-            print('Error: variable {0} not declared in line {1}'.format(p[-1], p.lexer.lineno))
-            sys.exit('variable_not_declared')
+    if funcVar is None:
+        funcVar = functionsDirectory.getFunctionVariable(globalScope, varId)
+        print("funcVar", funcVar)
+        if funcVar is None:
+            print('Error: variable ' + str(varId) + ' not declared in line ' + str(p.lexer.lineno))
+            sys.exit()
         else:
-            variableInfo = variable[1]
+            funcVarInfo = funcVar[1]
 
-            operandsStack.push(variableInfo[1])
-            typesStack.push(variableInfo[0])
+            funcVarType = funcVarInfo[0]
+            funcVarOperand = funcVarInfo[1]
+
+            operandsStack.push(funcVarOperand)
+            typesStack.push(funcVarType)
     else:
-        variableInfo = variable[1]
+        funcVarInfo = funcVar[1]
 
-        operandsStack.push(variableInfo[1])
-        typesStack.push(variableInfo[0])
+        funcVarType = funcVarInfo[0]
+        funcVarOperand = funcVarInfo[1]
 
-    print(operandsStack.push())
-    '''
+        operandsStack.push(funcVarOperand)
+        typesStack.push(funcVarType)
+
+    print("push_id_operand", operandsStack.top(), typesStack.top())
 
 def p_push_operator(p):
     '''
     push_operator :
     '''
 
-    operatorsStack.push(p[-1])
-    print(operatorsStack.top())
+    operator = p[-1]
+
+    operatorsStack.push(operator)
+    print('push_operator', operatorsStack.top())
 
 
 def p_ASSIGNMENT_ARRAY(p):
@@ -244,17 +296,85 @@ def p_FACTOR(p):
 
 def p_CONSTANT(p):
     '''
-    constant : ID constantprima
-             | FLOAT
-             | INT
+    constant : ID push_id_operand constantprima
+             | FLOAT push_float_operand
+             | INT push_int_operand
+             | boolean push_boolean_operand
+             | STRING push_string_operand
     '''
+
+def p_BOOLEAN(p):
+    '''
+    boolean : TRUE
+            | FALSE
+    '''
+    p[0] = p[1]
+    
+def p_push_float_operand(p):
+    '''
+    push_float_operand :
+    '''
+
+    floatType = p[-1]
+
+    global operandsStack
+    global operatorsStack
+
+    operandsStack.push(floatType)
+    typesStack.push('float')
+
+    print("push_float_operand", operandsStack.top(), typesStack.top())
+
+def p_push_int_operand(p):
+    '''
+    push_int_operand :
+    '''
+
+    intType = p[-1]
+
+    global operandsStack
+    global operatorsStack
+
+    operandsStack.push(intType)
+    typesStack.push('int')
+
+    print("push_int_operand", operandsStack.top(), typesStack.top())
+
+def p_push_boolean_operand(p):
+    '''
+    push_boolean_operand :
+    '''
+
+    booleanType = p[-1]
+
+    global operandsStack
+    global operatorsStack
+
+    operandsStack.push(booleanType)
+    typesStack.push('boolean')
+
+    print("push_boolean_operand", operandsStack.top(), typesStack.top())
+
+def p_push_string_operand(p):
+    '''
+    push_string_operand :
+    '''
+
+    stringType = p[-1]
+
+    global operandsStack
+    global operatorsStack
+
+    operandsStack.push(stringType)
+    typesStack.push('string')
+
+    print("push_string_operand", operandsStack.top(), typesStack.top())
 
 def p_CONSTANTPRIMA(p):
     '''
     constantprima : empty
                   | LBRACKET singularexp2 RBRACKET
     '''
-
 
 def p_FUNCTIONCALL(p):
     '''
@@ -296,11 +416,34 @@ def p_WRITE(p):
     '''
     write : PRINT LPAREN singularexp2 RPAREN SEMICOLON
     '''
+    global quadCont
+
+    operand = operandsStack.pop()
+    type = typesStack.pop()
+
+    print("...operand", operand)
+
+    quad = Quadruple(quadCont, 'print', operand, None, None)
+    quadQueue.enqueue(quad)
+    quadCont += 1
+
+    print("write", "Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result)
 
 def p_READ(p):
     '''
     read : ID push_id_operand ASSIGN push_operator INPUT SEMICOLON
     '''
+
+    global tempCont
+    global quadCont
+
+    rightOperand = operandsStack.pop()
+    rightType = typesStack.pop()
+    operator = operatorsStack.pop()
+
+    # CHECK READ INPUT STRUCTURE....................................................................................................................
+    quad = Quadruple(quadCont,'input', 'input', None, rightOperand)
+    print("read", "Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result)
 
 def p_CYCLE(p):
     '''
@@ -365,6 +508,31 @@ def p_EMPTY(p):
     empty :
     '''
     pass
+
+# NoYacc FUNCTIONS..................
+
+def createQuad(p):
+    rightOperand = operandsStack.pop()
+    rightType = typesStack.pop()
+    leftOperand = operandsStack.pop()
+    leftType = typesStack.pop()
+    operator = operatorsStack.pop()
+
+    global semanticCube
+    global tempCont
+    global quadCont
+
+    result = semanticCube.getType(leftType, rightType, operator)
+    print("result", result)
+
+    if result != 'Error':
+        # Assignment quadruple
+        quad = Quadruple(quadCont, operator, rightOperand, None, leftOperand)
+        quadQueue.enqueue(quad)
+        quadCont += 1
+        print("createQuad", "Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result)
+    else:
+        print('Type Missmatch')
 
 # Build parser
 parser = yacc.yacc()

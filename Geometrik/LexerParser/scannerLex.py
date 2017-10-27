@@ -6,7 +6,7 @@ tokens = ['ID', 'PLUS', 'MINUS', 'TIMES', 'DEVIDE', #Operators
           'GREATEROREQUAL', 'LESSEROREQUAL', 'AND', 'OR', 'NOT', # Operators
           'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE', # Delimiters
           'COMMA', 'COLON', 'SEMICOLON', # Delimiters
-          'INT', 'STRING', 'FLOAT',
+          'INT', 'STRING', 'FLOAT', 'BOOLEAN',
 ]
 
 # Dictionary of reserved words
