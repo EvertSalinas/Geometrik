@@ -52,7 +52,7 @@ class functions_Directory:
         function['starting_quadruple'] = quadruple
 
     # Return starting quadruple
-    def getFunctionStartingQuad(self, functionName):
+    def getStartingQuad(self, functionName):
         function = self.functions[functionName]
         return function['starting_quadruple']
 
@@ -66,19 +66,19 @@ class functions_Directory:
             function['variables'].insert(variableName, variableType, address)
             return True
 
+    # Insert temporal variable to the VarsTable of a function
+    def addTempVariable(self, functionName, variableType):
+        function = self.functions[functionName]
+        function['variables'].addTempToTotal(variableType)
+
     # Return variable from a VarsTable of a function
-    def getVariable(self, functionName, variableName):
+    def getFunctionVariable(self, functionName, variableName):
         function = self.functions[functionName]
         variables = function["variables"]
 
         variable = variables.get(variableName)
 
         return variable
-
-    # Insert temporal variable to the VarsTable of a function
-    def addTempVariable(self, functionName, variableType):
-        function = self.functions[functionName]
-        function['variables'].addTempToTotal(variableType)
 
     # Search by virtual address and return id if exists
     def getFunctionIdByAddress(self, globalScopeName, virtualAddress):
