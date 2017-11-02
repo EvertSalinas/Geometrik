@@ -22,8 +22,8 @@ currentScope = ""
 globalScope = ""
 
 # Counter variables
-quadCont = 1
-tempCont = 0
+quadCounter = 1
+tempCounter = 1
 
 # Stacks
 operatorsStack = Stack()
@@ -50,13 +50,14 @@ precedence = (
 # Grammar rules
 def p_PROGRAM(p):
     '''
-    program : PROGRAM ID add_global_func SEMICOLON programvars programfunction main
+    program : PROGRAM ID add_global_function SEMICOLON vars function main
+            | sexpression
     '''
 
     print("Correct Sintax.")
 
-def p_add_global_func(p):
-    '''add_global_func : '''
+def p_add_global_function(p):
+    '''add_global_function : '''
 
     global currentScope
     global globalScope
@@ -91,18 +92,6 @@ def p_switch_to_global_scope(p):
     #functionsDirectory.addStartingQuad(globalScope, quadCont)
     #print("switch_to_global_scope", functionsDirectory.getStartingQuad(currentScope))
 
-def p_PROGRAMVARS(p):
-    '''
-    programvars : vars programvars
-                | empty
-    '''
-
-def p_PROGRAMFUNCTION(p):
-    '''
-    programfunction : function programfunction
-                    | empty
-    '''
-
 def p_BLOCK(p):
     '''
     block : LBRACE blockprima RBRACE
@@ -128,8 +117,12 @@ def p_STATUTE(p):
 
 def p_CONDITION(p):
     '''
-    condition : IF LPAREN conditionprima RPAREN block
+    condition : IF LPAREN sexpression RPAREN do_condition_operation block
     '''
+
+def p_do_condition_operation(p):
+    'do_condition_operation : '
+    doConditionOperation(p)
 
 def p_CONDITIONPRIMA(p):
     '''
@@ -140,18 +133,13 @@ def p_CONDITIONPRIMA(p):
 def p_CONDPRIMAAUX(p):
     '''
     condprimaaux : functioncall
-                 | singularexp2
+                 | sexpression
     '''
 
 def p_VARS(p):
     '''
-    vars : VAR type ID array store_variable SEMICOLON
-    '''
-
-def p_ARRAY(p):
-    '''
-    array : LBRACKET singularexp2 RBRACKET
-          | empty
+    vars : VAR type ID array store_variable SEMICOLON vars
+         | empty
     '''
 
 def p_store_variable(p):
@@ -169,24 +157,30 @@ def p_store_variable(p):
     if not functionsDirectory.addFunctionVariable(currentScope, varName, varType, varName):
         print('Error, variable already declared')
 
-    print("store_variable",currentScope, functionsDirectory.getFunctionVariable(currentScope, varName))
+    print("store_variable", currentScope, functionsDirectory.getFunctionVariable(currentScope, varName),
+          "line: " + str(p.lexer.lineno))
+
+def p_ARRAY(p):
+    '''
+    array : LBRACKET sexpression RBRACKET
+          | empty
+    '''
 
 def p_TYPE(p):
     '''
     type : INTTYPE
          | FLOATTYPE
          | STRINGTYPE
-         | BOOLEANTYPE
+         | BOOLTYPE
     '''
     p[0] = p[1]
 
 
 def p_ASSIGNMENT(p):
     '''
-    assignment : ID push_id_operand ASSIGN push_operator singularexp2 SEMICOLON
+    assignment : ID push_id_operand ASSIGN push_operator sexpression SEMICOLON
     '''
-    print("assignment:")
-    createQuad(p)
+    doAssignOperation(p)
 
 def p_push_id_operand(p):
     '''
@@ -203,8 +197,7 @@ def p_push_id_operand(p):
         funcVar = functionsDirectory.getFunctionVariable(globalScope, varId)
         print("funcVar", funcVar)
         if funcVar is None:
-            print('Error: variable ' + str(varId) + ' not declared in line ' + str(p.lexer.lineno))
-            sys.exit()
+            errorVariableNotDeclared(p, varId)
         else:
             funcVarInfo = funcVar[1]
 
@@ -238,78 +231,162 @@ def p_push_operator(p):
 def p_ASSIGNMENT_ARRAY(p):
     '''
     assignmentarray : empty
-                    | LBRACKET singularexp2 RBRACKET
+                    | LBRACKET sexpression RBRACKET
     '''
 
 def p_ASSIGNMENT_PRIMA(p):
     '''
     assignmentprima : functioncall
-                    | singularexp2
+                    | sexpression
     '''
 
-def p_S_EXPRESSION2(p):
+def p_SEXPRESSION(p):
     '''
-    singularexp2 : singularexp
-                 | NOT singularexp
-
+    sexpression : negation expression do_not_operation
     '''
 
-def p_S_EXPRESSION(p):
+def p_EXPRESSION_NEGATION(p):
     '''
-    singularexp : singularexp AND expression
-                | singularexp OR expression
-                | expression
+    negation : NOT push_operator
+             | empty
     '''
+
+def p_do_not_operation(p):
+    '''
+    do_not_operation :
+    '''
+
+    global semanticCube
+    global tempCounter
+    global quadCounter
+
+    if operatorsStack.size() > 0:
+        if operatorsStack.top() == '!':
+            # Retrieve operands with their types, and the operator of the expression from the stacks
+            operand = operandsStack.pop()
+            type = typesStack.pop()
+            operator = operatorsStack.pop()
+
+            if type == 'bool':
+                resultType = 'bool'
+            else:
+                resultType = 'Error'
+
+            if resultType == 'bool':
+                tempOperand = "Temp"+str(tempCounter)
+                quad = Quadruple(quadCounter, operator, operand, None,
+                                 tempOperand)  # Last parameter should be the VirtualAddress
+                quadQueue.enqueue(quad)
+                operandsStack.push(tempOperand)
+                typesStack.push(resultType)
+
+                quadCounter += 1
+                tempCounter += 1
+
+                print("doNotOperation",("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+                quad.result), str(p.lexer.lineno))
+            else:
+                errorTypeMismatch(p)
 
 def p_EXPRESSION(p):
     '''
-    expression : expression LESSER exp
-               | expression GREATER exp
-               | expression EQUAL exp
-               | expression NOTEQUAL exp
-               | expression LESSEROREQUAL exp
-               | expression GREATEROREQUAL exp
+    expression : expression relationaloperators push_operator exp do_relational_operation
                | exp
     '''
 
+def p_RELATIONAL_OPERATORS(p):
+    '''
+    relationaloperators : LESSER
+                        | GREATER
+                        | EQUAL
+                        | NOTEQUAL
+                        | LESSEROREQUAL
+                        | GREATEROREQUAL
+                        | AND
+                        | OR
+    '''
+    p[0] = p[1]
+
+def p_do_relational_operation(p):
+    '''
+    do_relational_operation :
+    '''
+    operator = operatorsStack.top();
+    if operator == '<' or operator == '>' or operator == '==' or operator == '!=' or operator == '<=' or \
+                    operator == '>=' or operator == '||' or operator == '&&':
+        doOperations(p)
+
 def p_EXP(p):
     '''
-    exp : exp PLUS term
-        | exp MINUS term
+    exp : exp mathoperators1 push_operator term do_math_operation1
         | term
     '''
 
+def p_MATH_OPERATORS1(p):
+    '''
+    mathoperators1 : PLUS
+                   | MINUS
+    '''
+    p[0] = p[1]
+
+def p_do_math_operation1(p):
+    '''
+    do_math_operation1 :
+    '''
+    operator = operatorsStack.top()
+    if operator == '+' or operator == '-':
+        doOperations(p)
+
 def p_TERM(p):
     '''
-    term : term TIMES factor
-         | term DEVIDE factor
+    term : term mathoperators2 push_operator factor do_math_operation2
          | factor
     '''
 
+def p_MATH_OPERATORS2(p):
+    '''
+    mathoperators2 : TIMES
+                   | DEVIDE
+    '''
+    p[0] = p[1]
+
+def p_do_math_operation2(p):
+    '''
+    do_math_operation2 :
+    '''
+    operator = operatorsStack.top()
+    if operator == '*' or operator == '/':
+        doOperations(p)
+
 def p_FACTOR(p):
     '''
-    factor : LPAREN singularexp2 RPAREN
-           | PLUS constant
-           | MINUS constant
-           | constant
+    factor : LPAREN sexpression RPAREN
+           | varConst
     '''
 
 def p_CONSTANT(p):
     '''
-    constant : ID push_id_operand constantprima
+    varConst : ID push_id_operand
              | FLOAT push_float_operand
              | INT push_int_operand
-             | boolean push_boolean_operand
+             | bool push_bool_operand
              | STRING push_string_operand
     '''
 
-def p_BOOLEAN(p):
+def p_CONSTANTPRIMA(p):
     '''
-    boolean : TRUE
-            | FALSE
+    constantprima : empty
+                  | LBRACKET sexpression RBRACKET
+    '''
+
+
+def p_bool(p):
+    '''
+    bool : TRUE
+         | FALSE
     '''
     p[0] = p[1]
-    
+
 def p_push_float_operand(p):
     '''
     push_float_operand :
@@ -340,20 +417,20 @@ def p_push_int_operand(p):
 
     print("push_int_operand", operandsStack.top(), typesStack.top())
 
-def p_push_boolean_operand(p):
+def p_push_bool_operand(p):
     '''
-    push_boolean_operand :
+    push_bool_operand :
     '''
 
-    booleanType = p[-1]
+    boolType = p[-1]
 
     global operandsStack
     global operatorsStack
 
-    operandsStack.push(booleanType)
-    typesStack.push('boolean')
+    operandsStack.push(boolType)
+    typesStack.push('bool')
 
-    print("push_boolean_operand", operandsStack.top(), typesStack.top())
+    print("push_bool_operand", operandsStack.top(), typesStack.top())
 
 def p_push_string_operand(p):
     '''
@@ -370,11 +447,6 @@ def p_push_string_operand(p):
 
     print("push_string_operand", operandsStack.top(), typesStack.top())
 
-def p_CONSTANTPRIMA(p):
-    '''
-    constantprima : empty
-                  | LBRACKET singularexp2 RBRACKET
-    '''
 
 def p_FUNCTIONCALL(p):
     '''
@@ -385,19 +457,26 @@ def p_FUNCTIONCALL(p):
 def p_FUNCPARAM(p):
     '''
     funcparam : empty
-              | singularexp2
-              | singularexp COMMA funcparam
+              | sexpression
+              | sexpression COMMA funcparam
     '''
 
 def p_FUNCTION(p):
     '''
-    function : FUNCTION VOID ID LPAREN parameter RPAREN block
-             | FUNCTION type ID LPAREN parameter RPAREN block
+    function : FUNCTION functiontype ID LPAREN parameter RPAREN block function
+             | empty
     '''
+
+def p_FUNCTION_TYPE(p):
+    '''
+    functiontype : VOID
+                 | type
+    '''
+    p[0] = p[1]
 
 def p_RETURN(p):
     '''
-    return : RETURN singularexp2 SEMICOLON
+    return : RETURN sexpression SEMICOLON
     '''
 
 def p_PARAMETER(p):
@@ -414,40 +493,40 @@ def p_PARAMETERPRIMA(p):
 
 def p_WRITE(p):
     '''
-    write : PRINT LPAREN singularexp2 RPAREN SEMICOLON
+    write : PRINT LPAREN sexpression RPAREN SEMICOLON
     '''
-    global quadCont
+    global quadCounter
 
     operand = operandsStack.pop()
-    type = typesStack.pop()
+    popType = typesStack.pop()
 
-    print("...operand", operand)
-
-    quad = Quadruple(quadCont, 'print', operand, None, None)
+    quad = Quadruple(quadCounter, 'print', operand, None, None)
     quadQueue.enqueue(quad)
-    quadCont += 1
+    quadCounter += 1
 
-    print("write", "Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result)
+    print("write",( "Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result),
+          "line: " + str(p.lexer.lineno))
 
 def p_READ(p):
     '''
     read : ID push_id_operand ASSIGN push_operator INPUT SEMICOLON
     '''
 
-    global tempCont
-    global quadCont
+    global quadCounter
 
-    rightOperand = operandsStack.pop()
-    rightType = typesStack.pop()
+    operand = operandsStack.pop()
+    type = typesStack.pop()
     operator = operatorsStack.pop()
 
     # CHECK READ INPUT STRUCTURE....................................................................................................................
-    quad = Quadruple(quadCont,'input', 'input', None, rightOperand)
-    print("read", "Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result)
+    quad = Quadruple(quadCounter,'input', type, None, operand)
+    quadCounter += 1
+    print("read", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result),
+          "line: " + str(p.lexer.lineno))
 
 def p_CYCLE(p):
     '''
-    cycle : WHILE LPAREN singularexp2 RPAREN block
+    cycle : WHILE LPAREN sexpression RPAREN block
     '''
 
 def p_COLOR(p):
@@ -459,6 +538,7 @@ def p_COLOR(p):
           | BROWN
           | BLACK
     '''
+    p[0] = p[1]
 
 def p_PREDEFINED(p):
     '''
@@ -472,36 +552,37 @@ def p_PREDEFINED(p):
 
 def p_DRAWLINE(p):
     '''
-    drawline : DRAWLINE LPAREN singularexp2  COMMA singularexp2  COMMA singularexp2  COMMA singularexp2  COMMA color RPAREN SEMICOLON
+    drawline : DRAWLINE LPAREN sexpression  COMMA sexpression  COMMA sexpression  COMMA sexpression  COMMA color RPAREN SEMICOLON
     '''
 
 def p_DRAWSQUARE(p):
     '''
-    drawsquare : DRAWSQUARE LPAREN singularexp2  COMMA singularexp2 COMMA color RPAREN SEMICOLON
+    drawsquare : DRAWSQUARE LPAREN sexpression  COMMA sexpression COMMA color RPAREN SEMICOLON
     '''
 
 def p_DRAWTRIANGLE(p):
     '''
-    drawtriangle : DRAWTRIANGLE LPAREN singularexp2 COMMA singularexp2 COMMA color RPAREN SEMICOLON
+    drawtriangle : DRAWTRIANGLE LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
     '''
 
 def p_DRAWCIRCLE(p):
     '''
-    drawcircle : DRAWCIRCLE LPAREN singularexp2 COMMA singularexp2 COMMA color RPAREN SEMICOLON
+    drawcircle : DRAWCIRCLE LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
     '''
 
 def p_DRAWCURVE(p):
     '''
-    drawcurve : DRAWCURVE LPAREN singularexp2 COMMA singularexp2 COMMA color RPAREN SEMICOLON
+    drawcurve : DRAWCURVE LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
     '''
 
 def p_DRAWPOLYGON(p):
     '''
-    drawpolygon : DRAWPOLYGON LPAREN singularexp2 COMMA singularexp2 COMMA color RPAREN SEMICOLON
+    drawpolygon : DRAWPOLYGON LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
     '''
 
 def p_error(p):
-    print("Syntax error!")
+    print('ERROR: Syntax Error in line: ' + str(p.lexer.lineno))
+    sys.exit()
 
 def p_EMPTY(p):
     '''
@@ -510,29 +591,83 @@ def p_EMPTY(p):
     pass
 
 # NoYacc FUNCTIONS..................
+def doConditionOperation(p):
+    global quadCounter
 
-def createQuad(p):
+    expressionType = typesStack.pop()
+
+    if expressionType != 'bool':
+        errorTypeMismatch(p)
+    else:
+        expressionResult = operandsStack.pop()
+        quad = Quadruple(quadCounter, 'gotof', expressionResult, None, None)
+        quadQueue.enqueue(quad)
+
+        #JumpStack.append(quadCont - 1)
+        quadCounter += 1
+        print("doConditionOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand,
+                                    quad.right_operand, quad.result), "line: " +str(p.lexer.lineno))
+
+def doAssignOperation(p):
+    # Global variables to use
+    global semanticCube
+    global quadCounter
+
+    # Retrieve operands with their types, and the operator of the expression from the stacks
+    rightOperand = operandsStack.pop()
+    rightType = typesStack.pop()
+    leftOperand = operandsStack.pop()
+    leftType = typesStack.pop()
+    operator = operatorsStack.pop()
+    resultType = semanticCube.getType(leftType, rightType, operator)
+
+    if resultType != 'Error':
+        # Assignment quadruple
+        quad = Quadruple(quadCounter, operator, rightOperand, None, leftOperand) # Last parameter should be the VirtualAddress
+        quadQueue.enqueue(quad)
+        quadCounter += 1
+        print("doAssignOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand,
+              quad.right_operand, quad.result), "line: " +str(p.lexer.lineno))
+    else:
+        errorTypeMismatch(p)
+
+def doOperations(p):
+    # Global variables to use
+    global semanticCube
+    global tempCounter
+    global quadCounter
+
+    # Retrieve operands with their types, and the operator of the expression from the stacks
     rightOperand = operandsStack.pop()
     rightType = typesStack.pop()
     leftOperand = operandsStack.pop()
     leftType = typesStack.pop()
     operator = operatorsStack.pop()
 
-    global semanticCube
-    global tempCont
-    global quadCont
+    resultType = semanticCube.getType(leftType, rightType, operator)
 
-    result = semanticCube.getType(leftType, rightType, operator)
-    print("result", result)
-
-    if result != 'Error':
-        # Assignment quadruple
-        quad = Quadruple(quadCont, operator, rightOperand, None, leftOperand)
+    if resultType != 'Error':
+        tempOperand = "Temp" + str(tempCounter)
+        quad = Quadruple(quadCounter, operator, leftOperand, rightOperand, tempOperand) # Last parameter should be the VirtualAddress
         quadQueue.enqueue(quad)
-        quadCont += 1
-        print("createQuad", "Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result)
+        operandsStack.push(tempOperand)
+        typesStack.push(resultType)
+        tempCounter += 1
+        quadCounter += 1
+
+        print("doOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+              quad.result), "line: " +str(p.lexer.lineno))
     else:
-        print('Type Missmatch')
+        errorTypeMismatch(p)
+
+# Error functions
+def errorTypeMismatch(p):
+    print('ERROR: Type mismatch in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+def errorVariableNotDeclared(p, varId):
+    print('Error: variable ' + str(varId) + ' not declared in line ' + str(p.lexer.lineno))
+    sys.exit()
 
 # Build parser
 parser = yacc.yacc()

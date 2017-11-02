@@ -6,8 +6,5 @@ class Quadruple:
         self.right_operand = right_operand
         self.result = result
 
-    def printQuad(self):
-        print('Quad {0} = [{1}, {2}, {3}, {4}]'.format(self.quad_number, self.operator, self.left_operand, self.right_operand, self.result))
-
-    def fillQuadJump(self, quadCounter):
+    def addJump(self, quadCounter):
         self.result = quadCounter
