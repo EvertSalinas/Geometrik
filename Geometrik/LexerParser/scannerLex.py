@@ -6,7 +6,7 @@ tokens = ['ID', 'PLUS', 'MINUS', 'TIMES', 'DEVIDE', #Operators
           'GREATEROREQUAL', 'LESSEROREQUAL', 'AND', 'OR', 'NOT', # Operators
           'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE', # Delimiters
           'COMMA', 'COLON', 'SEMICOLON', # Delimiters
-          'INT', 'STRING', 'FLOAT', 'BOOLEAN',
+          'INT', 'STRING', 'FLOAT',
 ]
 
 # Dictionary of reserved words
@@ -35,7 +35,7 @@ reserved = {
     'Brown': 'BROWN',
     'Black': 'BLACK',
     'int': 'INTTYPE',
-    'boolean': 'BOOLEANTYPE',
+    'bool': 'BOOLTYPE',
     'float': 'FLOATTYPE',
     'string': 'STRINGTYPE',
     'void': 'VOID',

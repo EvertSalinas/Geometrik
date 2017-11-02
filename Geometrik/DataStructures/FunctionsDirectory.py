@@ -66,11 +66,6 @@ class functions_Directory:
             function['variables'].insert(variableName, variableType, address)
             return True
 
-    # Insert temporal variable to the VarsTable of a function
-    def addTempVariable(self, functionName, variableType):
-        function = self.functions[functionName]
-        function['variables'].addTempToTotal(variableType)
-
     # Return variable from a VarsTable of a function
     def getFunctionVariable(self, functionName, variableName):
         function = self.functions[functionName]
