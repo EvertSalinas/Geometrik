@@ -1,0 +1,7 @@
+program test;
+
+var int a;
+
+int main() {
+    a = 4;
+}

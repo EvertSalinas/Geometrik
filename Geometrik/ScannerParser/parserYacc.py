@@ -1,0 +1,983 @@
+import ply.yacc as yacc
+import sys
+
+sys.path.append("..")
+
+from scannerLex import tokens
+from DataStructures.FunctionsDirectory import functions_Directory
+from DataStructures.Stack import Stack
+from DataStructures.VariablesTable import vars_Table
+from DataStructures.Quadruple import Quadruple
+from DataStructures.Queue import Queue
+from SemanticCube.SemanticCube import semantic_Cube
+
+#-----------------------------------------------------------------
+
+# Directories
+functionsDirectory = functions_Directory();
+semanticCube = semantic_Cube();
+
+# Scope management variables
+currentScope = ""
+globalScope = ""
+
+# Counter variables
+quadCounter = 1
+tempCounter = 1
+
+# Stacks
+operatorsStack = Stack()
+operandsStack = Stack()
+typesStack = Stack()
+jumpsStack = Stack()
+
+# Queues
+quadQueue = Queue()
+
+# Dimension management variables
+dimension = {}
+dimensionVar = ""
+
+# Grammar rules
+def p_PROGRAM(p):
+    '''
+    program : PROGRAM ID add_global_function SEMICOLON goto_main vars function main endProgram
+    '''
+
+def p_end(p):
+    '''
+    endProgram :
+    '''
+    endProgram(p)
+
+def p_add_global_function(p):
+    '''
+    add_global_function :
+    '''
+    # Call function to add global function to FunctionsDirectory
+    addGlobalFunc(p)
+
+def p_MAIN(p):
+    '''
+    main : INTTYPE MAIN LPAREN RPAREN add_jump_to_main block
+    '''
+
+def p_goto_main(p):
+    '''
+    goto_main :
+    '''
+    # Create Quadruple to jump to main
+    gotoMain(p)
+
+def p_add_jump_to_main(p):
+    '''
+    add_jump_to_main :
+    '''
+    # Fill the jump quadruple of the first quadruple
+    addJumpToMain(p)
+
+def p_BLOCK(p):
+    '''
+    block : LBRACE blockprima RBRACE
+    '''
+
+def p_BLOCKPRIMA(p):
+    '''
+    blockprima : statute blockprima
+               | empty
+    '''
+
+def p_STATUTE(p):
+    '''
+    statute : assignment
+            | condition
+            | write
+            | read
+            | cycle
+            | functioncall
+            | predefined
+            | return
+    '''
+
+def p_CONDITION(p):
+    '''
+    condition : IF LPAREN sexpression RPAREN do_condition_operation block else
+    '''
+    # Call function to fill the jumps
+    doEndConditionOperation(p)
+
+def p_do_condition_operation(p):
+    '''
+    do_condition_operation :
+    '''
+    # Do the condition operations and quadruples
+    doConditionOperation(p)
+
+def p_CONDITIONPRIMA(p):
+    '''
+    conditionprima : functioncall
+                   | sexpression
+    '''
+
+def p_ELSE(p):
+    '''
+    else : ELSE do_else_operation block
+         | empty
+    '''
+
+def p_do_else_operation(p):
+    '''
+    do_else_operation :
+    '''
+    # Do the else operations and quadruples
+    doElseOperation(p)
+
+def p_VARS(p):
+    '''
+    vars : VAR type ID array store_variable SEMICOLON vars
+         | empty
+    '''
+
+def p_store_variable(p):
+    '''
+    store_variable :
+    '''
+    # Store Variable in VarsTable of the current scope
+    storeVariable(p)
+
+def p_ARRAY(p):
+    '''
+    array : LBRACKET sexpression RBRACKET
+          | empty
+    '''
+
+def p_TYPE(p):
+    '''
+    type : INTTYPE
+         | FLOATTYPE
+         | STRINGTYPE
+         | BOOLTYPE
+    '''
+    p[0] = p[1]
+
+
+def p_ASSIGNMENT(p):
+    '''
+    assignment : ID push_id_operand ASSIGN push_operator sexpression SEMICOLON
+    '''
+    # Do the assignment operations and quadruples
+    doAssignOperation(p)
+
+def p_push_id_operand(p):
+    '''
+    push_id_operand :
+    '''
+    # Push operand to stack
+    pushOperand(p)
+
+def p_push_operator(p):
+    '''
+    push_operator :
+    '''
+    # Push operator to stack
+    pushOperator(p)
+
+def p_ASSIGNMENT_ARRAY(p):
+    '''
+    assignmentarray : empty
+                    | LBRACKET sexpression RBRACKET
+    '''
+
+def p_ASSIGNMENT_PRIMA(p):
+    '''
+    assignmentprima : functioncall
+                    | sexpression
+    '''
+
+def p_SEXPRESSION(p):
+    '''
+    sexpression : negation expression do_not_operation
+    '''
+
+def p_EXPRESSION_NEGATION(p):
+    '''
+    negation : NOT push_operator
+             | empty
+    '''
+
+def p_do_not_operation(p):
+    '''
+    do_not_operation :
+    '''
+    # Do the not operations and quadruples for expressions
+    doNotOperation(p)
+
+def p_EXPRESSION(p):
+    '''
+    expression : expression relationaloperators push_operator exp do_relational_operation
+               | exp
+    '''
+
+def p_RELATIONAL_OPERATORS(p):
+    '''
+    relationaloperators : LESSER
+                        | GREATER
+                        | EQUAL
+                        | NOTEQUAL
+                        | LESSEROREQUAL
+                        | GREATEROREQUAL
+                        | AND
+                        | OR
+    '''
+    p[0] = p[1]
+
+def p_do_relational_operation(p):
+    '''
+    do_relational_operation :
+    '''
+    # Do operations and quadruples for the relational operations
+    operator = operatorsStack.top()
+    if operator == '<' or operator == '>' or operator == '==' or operator == '!=' or operator == '<=' or \
+                    operator == '>=' or operator == '||' or operator == '&&':
+        doOperations(p)
+
+def p_EXP(p):
+    '''
+    exp : exp mathoperators1 push_operator term do_math_operation1
+        | term
+    '''
+
+def p_MATH_OPERATORS1(p):
+    '''
+    mathoperators1 : PLUS
+                   | MINUS
+    '''
+    p[0] = p[1]
+
+def p_do_math_operation1(p):
+    '''
+    do_math_operation1 :
+    '''
+    # Do operations and quadruples for the plus and minus operations
+    operator = operatorsStack.top()
+    if operator == '+' or operator == '-':
+        doOperations(p)
+
+def p_TERM(p):
+    '''
+    term : term mathoperators2 push_operator factor do_math_operation2
+         | factor
+    '''
+
+def p_MATH_OPERATORS2(p):
+    '''
+    mathoperators2 : TIMES
+                   | DEVIDE
+    '''
+    p[0] = p[1]
+
+def p_do_math_operation2(p):
+    '''
+    do_math_operation2 :
+    '''
+    # Do operations and quadruples for times and devide operations
+    operator = operatorsStack.top()
+    if operator == '*' or operator == '/':
+        doOperations(p)
+
+def p_FACTOR(p):
+    '''
+    factor : LPAREN push_false_bottom sexpression RPAREN pop_false_bottom
+           | varConst
+    '''
+
+def p_push_false_bottom(p):
+    '''
+    push_false_bottom :
+    '''
+    operatorsStack.push('(')
+
+def p_pop_false_bottom(p):
+    '''
+    pop_false_bottom :
+    '''
+    operatorsStack.pop()
+
+def p_CONSTANT(p):
+    '''
+    varConst : ID push_id_operand
+             | FLOAT push_float_operand
+             | INT push_int_operand
+             | bool push_bool_operand
+             | STRING push_string_operand
+             | predefined
+             | functioncall
+    '''
+
+def p_CONSTANTPRIMA(p):
+    '''
+    constantprima : empty
+                  | LBRACKET sexpression RBRACKET
+    '''
+
+def p_bool(p):
+    '''
+    bool : TRUE
+         | FALSE
+    '''
+    p[0] = p[1]
+
+def p_push_float_operand(p):
+    '''
+    push_float_operand :
+    '''
+    # Push float operand
+    pushFloatOperand(p)
+
+def p_push_int_operand(p):
+    '''
+    push_int_operand :
+    '''
+    # Push int operand
+    pushIntOperand(p)
+
+def p_push_bool_operand(p):
+    '''
+    push_bool_operand :
+    '''
+    # Push boolean operand
+    pushBoolOperand(p)
+
+def p_push_string_operand(p):
+    '''
+    push_string_operand :
+    '''
+    # Push string operand
+    pushStringOperand(p)
+
+def p_FUNCTIONCALL(p):
+    '''
+    functioncall : ID LPAREN funcparam RPAREN SEMICOLON
+    '''
+
+def p_FUNCPARAM(p):
+    '''
+    funcparam : empty
+              | sexpression
+              | sexpression COMMA funcparam
+    '''
+
+def p_FUNCTION(p):
+    '''
+    function : FUNCTION functiontype ID LPAREN parameter RPAREN block function
+             | empty
+    '''
+
+def p_FUNCTION_TYPE(p):
+    '''
+    functiontype : VOID
+                 | type
+    '''
+    p[0] = p[1]
+
+def p_RETURN(p):
+    '''
+    return : RETURN sexpression SEMICOLON
+    '''
+
+def p_PARAMETER(p):
+    '''
+    parameter : empty
+              | parameterprima
+    '''
+
+def p_PARAMETERPRIMA(p):
+    '''
+    parameterprima : type ID
+                   | type ID COMMA parameterprima
+    '''
+
+def p_WRITE(p):
+    '''
+    write : PRINT LPAREN sexpression RPAREN SEMICOLON
+    '''
+    # Do Write quadruples
+    doWriteOperation(p)
+
+def p_READ(p):
+    '''
+    read : ID push_id_operand ASSIGN push_operator INPUT SEMICOLON
+    '''
+    # Do Read quadruples
+    doReadOperation(p)
+
+def p_CYCLE(p):
+    '''
+    cycle : WHILE push_cycle_jump LPAREN sexpression RPAREN do_while_operation block
+    '''
+    # Fill Cycle quadruples jumps
+    doEndCycleOperations(p)
+
+def p_push_cycle_jump(p):
+    '''
+    push_cycle_jump :
+    '''
+    # Push jump reference to jumps stack
+    pushCycleJump(p)
+
+def p_do_while_operation(p):
+    '''
+    do_while_operation :
+    '''
+    # Do Cycle quadruples
+    doCycleOperations(p)
+
+def p_COLOR(p):
+    '''
+    color : BLUE
+          | GREEN
+          | RED
+          | YELLOW
+          | BROWN
+          | BLACK
+    '''
+    p[0] = p[1]
+
+def p_PREDEFINED(p):
+    '''
+    predefined : drawline
+               | drawsquare
+               | drawtriangle
+               | drawcircle
+               | drawcurve
+               | drawpolygon
+    '''
+
+def p_DRAWLINE(p):
+    '''
+    drawline : DRAWLINE LPAREN sexpression  COMMA sexpression  COMMA sexpression  COMMA sexpression  COMMA color RPAREN SEMICOLON
+    '''
+
+def p_DRAWSQUARE(p):
+    '''
+    drawsquare : DRAWSQUARE LPAREN sexpression  COMMA sexpression COMMA color RPAREN SEMICOLON
+    '''
+
+def p_DRAWTRIANGLE(p):
+    '''
+    drawtriangle : DRAWTRIANGLE LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
+    '''
+
+def p_DRAWCIRCLE(p):
+    '''
+    drawcircle : DRAWCIRCLE LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
+    '''
+
+def p_DRAWCURVE(p):
+    '''
+    drawcurve : DRAWCURVE LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
+    '''
+
+def p_DRAWPOLYGON(p):
+    '''
+    drawpolygon : DRAWPOLYGON LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
+    '''
+
+def p_EMPTY(p):
+    '''
+    empty :
+    '''
+    pass
+
+# NoYacc FUNCTIONS..................
+def addGlobalFunc(p):
+    global currentScope
+    global globalScope
+
+    # Save the current function name
+    globalScope = p[-1]
+    currentScope = p[-1]
+
+    # Create function directory variable
+    functionsDirectory.insert(currentScope, 'void')
+    print("add_global_func", currentScope, functionsDirectory.getFunctionType(currentScope))
+
+def addJumpToMain(p):
+    global quadCounter
+
+    # Get number of pending quad to fill
+    end = jumpsStack.pop()
+    # Get reverse position of Queue
+    quadNumber = (quadQueue.size()-1) - end
+    # Get quad to fill
+    quad = quadQueue.get(quadNumber)
+    # Full quads jump
+    quad.addJump(quadCounter)
+
+    print("addJumpToMain", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result),
+          "line: " + str(p.lexer.lineno))
+
+def gotoMain(p):
+    global quadCounter
+
+    # Push number of quad to be jumpfilled
+    jumpsStack.push(quadCounter)
+    # Create gotomain quadruple
+    quad = Quadruple(quadCounter, 'goto', None, None, None)
+    # Increment quadCounter
+    quadCounter += 1
+    # Add quad to the QuadQueue
+    quadQueue.enqueue(quad)
+
+    print("gotoMain",
+          ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result),
+          "line: " + str(p.lexer.lineno))
+
+def storeVariable(p):
+    global currentScope
+
+    # Get varable name and type
+    varId = p[-2]
+    varType = p[-3]
+
+    # varId needs to be changed to virtual address
+    if not functionsDirectory.addFunctionVariable(currentScope, varId, varType, varId):
+        # Execute Variable Already Declared Error
+        errorVariableAlreadyDeclared(p, varId)
+    else:
+        print("store_variable", currentScope, functionsDirectory.getFunctionVariable(currentScope, varId),
+              "line: " + str(p.lexer.lineno))
+
+def pushOperand(p):
+    global currentScope
+
+    # Get variable name
+    varId = p[-1]
+    # Get Variable from the current scope varsTable
+    funcVar = functionsDirectory.getFunctionVariable(currentScope, varId)
+
+    # Check if the variables exists in the current scope
+    if funcVar is None:
+        funcVar = functionsDirectory.getFunctionVariable(globalScope, varId)
+        # Check of the variable exists in the global scope
+        if funcVar is None:
+            # Execute Variable Not Declared Error
+            errorVariableNotDeclared(p, varId)
+        else:
+            # Get Variable Info
+            funcVarInfo = funcVar[1]
+            # Variable type
+            funcVarType = funcVarInfo[0]
+            # Variable name
+            funcVarId = funcVarInfo[1]
+            # Push variable name to operands stack
+            operandsStack.push(funcVarId)
+            # Push variables type to types stack
+            typesStack.push(funcVarType)
+    else:
+        # Get Variable Info
+        funcVarInfo = funcVar[1]
+        # Variable type
+        funcVarType = funcVarInfo[0]
+        # Variable name
+        funcVarId = funcVarInfo[1]
+        # Push variable name to operands stack
+        operandsStack.push(funcVarId)
+        # Push variables type to types stack
+        typesStack.push(funcVarType)
+
+    print("push_id_operand", operandsStack.top(), typesStack.top())
+
+def pushOperator(p):
+    # Get operator
+    operator = p[-1]
+    # Push operator to operators stack
+    operatorsStack.push(operator)
+
+    print('push_operator', operatorsStack.top())
+
+def pushFloatOperand(p):
+    global operandsStack
+    global operatorsStack
+
+    # Get operand
+    operand = p[-1]
+    # Push operand to operands stack
+    operandsStack.push(operand)
+    # Push type to operands stack
+    typesStack.push('float')
+
+    print("push_float_operand", operandsStack.top(), typesStack.top())
+
+def pushIntOperand(p):
+    global operandsStack
+    global operatorsStack
+
+    # Get operand
+    operand = p[-1]
+    # Push operand to operands stack
+    operandsStack.push(operand)
+    # Push type to operands stack
+    typesStack.push('int')
+
+    print("push_int_operand", operandsStack.top(), typesStack.top())
+
+def pushBoolOperand(p):
+    global operandsStack
+    global operatorsStack
+
+    # Get operand
+    operand = p[-1]
+    # Push operand to operands stack
+    operandsStack.push(operand)
+    # Push type to operands stack
+    typesStack.push('bool')
+
+    print("push_bool_operand", operandsStack.top(), typesStack.top())
+
+def pushStringOperand(p):
+    global operandsStack
+    global operatorsStack
+
+    # Get operand
+    operand = p[-1]
+    # Push operand to operands stack
+    operandsStack.push(operand)
+    # Push type to operands stack
+    typesStack.push('string')
+
+    print("push_string_operand", operandsStack.top(), typesStack.top())
+
+def doReadOperation(p):
+    global quadCounter
+
+    # Pop operand from operands stack
+    operand = operandsStack.pop()
+    # Pop type from types stack
+    type = typesStack.pop()
+    # Pop operator from operators stack
+    operator = operatorsStack.pop()
+
+    # Create quadruple for Read operation
+    quad = Quadruple(quadCounter, 'input', type, None, operand)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+    # Increment QuadCounter
+    quadCounter += 1
+
+    print("read", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result),
+          "line: " + str(p.lexer.lineno))
+
+def doWriteOperation(p):
+    global quadCounter
+
+    # Pop operand from operands stack
+    operand = operandsStack.pop()
+    # Pop type from types stack
+    popType = typesStack.pop()
+
+    # Create quadruple for Write operation
+    quad = Quadruple(quadCounter, 'print', operand, None, None)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+    # Increment QuadCounter
+    quadCounter += 1
+
+    print("write", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result),
+          "line: " + str(p.lexer.lineno))
+
+
+def doNotOperation(p):
+    global semanticCube
+    global tempCounter
+    global quadCounter
+
+    # Check if the operators stack is not empty
+    if not operatorsStack.isEmpty():
+        # Check if the top operator is a negation '!'
+        if operatorsStack.top() == '!':
+            # Retrieve operand from operands stack
+            operand = operandsStack.pop()
+            # Retrieve type from types stack
+            type = typesStack.pop()
+            # Retrieve operator from operators stack
+            operator = operatorsStack.pop()
+
+            # Check if type is bool or not
+            if type != 'bool':
+                resultType = 'Error'
+            else:
+                resultType = 'bool'
+
+            # Check if the result type is bool or not
+            if resultType != 'bool':
+                # Execute type missmatch error
+                errorTypeMismatch(p)
+            else:
+                # Create next temporal variable
+                tempOperand = "Temp"+str(tempCounter)
+                # Create quadruple for the negation operation
+                quad = Quadruple(quadCounter, operator, operand, None,
+                                 tempOperand)  # Last parameter should be the VirtualAddress
+                # Add quad to QuadQueue
+                quadQueue.enqueue(quad)
+                # Push temporal variable to operands stack
+                operandsStack.push(tempOperand)
+                # Push temporal variables type to types stack
+                typesStack.push(resultType)
+                # Increment QuadCounter
+                quadCounter += 1
+                # Increment Temporal Variables Counter
+                tempCounter += 1
+
+                print("doNotOperation",("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+                quad.result), str(p.lexer.lineno))
+
+def doConditionOperation(p):
+    global quadCounter
+
+    # Get the type of the evaluated expression
+    expressionType = typesStack.pop()
+    # Get the result of the expression
+    expressionResult = operandsStack.pop()
+
+    # Check if expressions type is boolean or not
+    if expressionType != 'bool':
+        # Execute type missmatch error
+        errorTypeMismatch(p)
+    else:
+        # Create quadruple to jump if condition is false
+        quad = Quadruple(quadCounter, 'gotof', expressionResult, None, None)
+        # Add quadruple to QuadQueue
+        quadQueue.enqueue(quad)
+        # Push number of quad to be jumpfilled
+        jumpsStack.push(quadCounter - 1)
+        # Increment QuadCounter
+        quadCounter += 1
+
+        print("doConditionOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand,
+                                    quad.right_operand, quad.result), "line: " +str(p.lexer.lineno))
+
+def doEndConditionOperation(p):
+    global quadCounter
+
+    # Get number of pending quad to fill
+    end = jumpsStack.pop()
+    # Get reverse position of Queue
+    quadNumber = (quadQueue.size() - 1) - end
+    # Get quad to fill
+    quad = quadQueue.get(quadNumber)
+    # Full quads jump
+    quad.addJump(quadCounter)
+
+    print("doEndConditionOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand,
+                                   quad.right_operand, quad.result), "line: " + str(p.lexer.lineno))
+
+def doElseOperation(p):
+    global quadCounter
+
+    # Create quadruple to jump if else
+    quad = Quadruple(quadCounter, 'goto', None, None, None)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+    # Get number of pending quad to fill
+    false = jumpsStack.pop()
+    # Get reverse position of Queue
+    quadNumber = (quadQueue.size() - 1) - false
+    # Push number of quad to be jumpfilled
+    jumpsStack.push(quadCounter - 1)
+    # Increment QuadCounter
+    quadCounter += 1
+    # Add quad to QuadQueue
+    quad = quadQueue.get(quadNumber)
+    # Full quads jump
+    quad.addJump(quadCounter)
+
+    print("doElseOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand,
+                                quad.right_operand, quad.result), "line: " +str(p.lexer.lineno))
+
+def doAssignOperation(p):
+    # Global variables to use
+    global semanticCube
+    global quadCounter
+
+    # Retrieve right operand of the assignment
+    rightOperand = operandsStack.pop()
+    # Retrieve right type of the assignment
+    rightType = typesStack.pop()
+    # Retrieve left operand of the assignment
+    leftOperand = operandsStack.pop()
+    # Retrieve right type of the assignment
+    leftType = typesStack.pop()
+    # Retrieve operator of the assignment
+    operator = operatorsStack.pop()
+
+    # Do the semantic evaluation of the assignment
+    resultType = semanticCube.getType(leftType, rightType, operator)
+
+    # Check if the result type is Error or not
+    if resultType == 'Error':
+        # Execute type missmatch error
+        errorTypeMismatch(p)
+    else:
+        # Create cuadruple for assignment
+        quad = Quadruple(quadCounter, operator, rightOperand, None, leftOperand) # Last parameter should be the VirtualAddress
+        # Add quad to QuadQueue
+        quadQueue.enqueue(quad)
+        # Increment QuadCounter
+        quadCounter += 1
+
+        print("doAssignOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand,
+              quad.right_operand, quad.result), "line: " +str(p.lexer.lineno))
+
+def doOperations(p):
+    global semanticCube
+    global tempCounter
+    global quadCounter
+
+    # Retrieve right operand of the operation
+    rightOperand = operandsStack.pop()
+    # Retrieve right type of the operation
+    rightType = typesStack.pop()
+    # Retrieve left operand of the operation
+    leftOperand = operandsStack.pop()
+    # Retrieve right type of the operation
+    leftType = typesStack.pop()
+    # Retrieve operator of the operation
+    operator = operatorsStack.pop()
+
+    # Do the semantic evaluation of the operation
+    resultType = semanticCube.getType(leftType, rightType, operator)
+
+    # Check if the result type is Error or not
+    if resultType == 'Error':
+        # Execute type missmatch error
+        errorTypeMismatch(p)
+    else:
+        # Create temporal variable
+        tempOperand = "Temp" + str(tempCounter)
+        # Create cuadruple for assignment
+        quad = Quadruple(quadCounter, operator, leftOperand, rightOperand, tempOperand) # Last parameter should be the VirtualAddress
+        # Add quad to QuadQueue
+        quadQueue.enqueue(quad)
+        # Push temporal variable to operands stack
+        operandsStack.push(tempOperand)
+        # Push temporal variables type to types stack
+        typesStack.push(resultType)
+        # Increment QuadCounter
+        quadCounter += 1
+        # Increment temporal variables counter
+        tempCounter += 1
+
+        print("doOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+              quad.result))
+
+def pushCycleJump(p):
+    global quadCounter
+
+    # Push quad to be jumpfilled
+    jumpsStack.push(quadCounter)
+
+def doCycleOperations(p):
+    global quadCounter
+
+    # Get the type of the evaluated expression
+    expressionType = typesStack.pop()
+    # Get the result of the expression
+    expressionResult = operandsStack.pop()
+
+    # Check if expressions type is boolean or not
+    if expressionType != 'bool':
+        # Execute type missmatch error
+        errorTypeMismatch(p)
+    else:
+        # Create quadruple to jump if cycle condition if false
+        quad = Quadruple(quadCounter, 'gotof', expressionResult, None, None)
+        # Add quad to QuadCounter
+        quadQueue.enqueue(quad)
+        # Push quad to be jumpfilled
+        jumpsStack.push(quadCounter - 1)
+        # Increment QuadCounter
+        quadCounter += 1
+
+        print("doCycleOperations", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand,
+                                       quad.right_operand, quad.result), "line: " + str(p.lexer.lineno))
+
+def doEndCycleOperations(p):
+    global quadCounter
+
+    # Get number of pending quad to fill
+    end = jumpsStack.pop()
+    # Get number of quad to return
+    retrn = jumpsStack.pop()
+    # Get reverse position of Queue
+    quadNumber = (quadQueue.size() - 1) - end
+    # Get reverse position of Queue
+    returnJump = (quadQueue.size() - 1) - retrn
+    # Get quad to fill
+    endQuad = quadQueue.get(quadNumber)
+
+    # Create quadruple to return in cycle
+    quad = Quadruple(quadCounter, 'goto', None, None, returnJump)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+    # Increment QuadCounter
+    quadCounter += 1
+    # Fill quads jump
+    endQuad.addJump(quadCounter)
+
+    print("doEndCycleOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand,
+                                   quad.right_operand, quad.result), "line: " + str(p.lexer.lineno))
+
+def endProgram(p):
+    # Create ending quad
+    quad = Quadruple(quadCounter, "END", None, None, None)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+
+    print("endProgram", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+                          quad.result))
+    print("Correct Sintax.\n\n")
+
+    # Show list of quadruples
+    print("LIST OF QUADRUPLES:")
+    while not quadQueue.isEmpty():
+        quad = quadQueue.dequeue()
+        print(("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+                              quad.result))
+
+# Error functions
+def p_error(p):
+    print('ERROR: Syntax Error in line: ' + str(p.lexer.lineno))
+    sys.exit()
+
+def errorTypeMismatch(p):
+    print('ERROR: Type mismatch in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+def errorVariableNotDeclared(p, varId):
+    print('Error: variable ' + str(varId) + ' not declared in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+def errorVariableAlreadyDeclared(p, varId):
+    print('Error: variable ' + str(varId) + ' already declared in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+# Build parser
+parser = yacc.yacc()
+
+#print("Filename or path: ")
+#filename = raw_input()
+
+file = open("../Tests/TestIfElse", 'r')
+
+parser.parse(file.read())
+
+'''
+while True:
+    try:
+       s = raw_input('calc> ')
+    except EOFError:
+        break
+    parser.parse(s)
+'''
