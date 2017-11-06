@@ -14,3 +14,6 @@ class Queue:
 
     def size(self):
         return len(self.items)
+
+    def get(self, index):
+        return self.items[index]
