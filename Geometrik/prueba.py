@@ -1,53 +1,50 @@
-from DataStructures.VariablesTable import VarsTable
-from DataStructures.FunctionsDirectory import FunctionsDirectory
+from Memory.Memory import MemoryBlock
 
-funcDirectory = FunctionsDirectory()
-globalVariables = VarsTable()
+memoria = MemoryBlock()
 
-funcDirectory.insert('func1', 'void')
-funcDirectory.addParameterTypes('func1', ['int', 'float', 'string'])
+a1 = memoria.storeVariableToMemory(1, 'int') # 0
 
-funcDirectory.insert('func2', 'int')
-funcDirectory.addParameterTypes('func2', ['int', 'boolean'])
+a2 = memoria.storeConstantToMemory('false', 'bool') # 3000
 
-parameters = funcDirectory.functions['func1']
-parameters2 = funcDirectory.functions['func2']
+a3 = memoria.storeTempToMemory('ajai', 'string') # 5500
 
-funcDirectory.addFunctionVariable('func1','y','float','2000')
+a4 = memoria.storeVariableToMemory(2, 'int') # 1
 
-variable = funcDirectory.getVariable('func1', 'y')
+a5 = memoria.storeConstantToMemory(1.0, 'float') # 2500
 
-print(variable)
+a6 = memoria.storeVariableToMemory(3, 'int') # 2
 
-# Insert reserved words to prevent them being used as identifiers
+a7 = memoria.storeTempToMemory('nop', 'string') # 5501
+
+a8 = memoria.storeConstantToMemory('sip', 'string') # 3500
+
+a9 = memoria.storeVariableToMemory(4, 'int') # 3
+
+a10 = memoria.storeVariableToMemory('true', 'bool') # 1000
+
+a11 = memoria.storeTempToMemory(2.0, 'float') # 4500
+
+a12 = memoria.storeConstantToMemory(5, 'int') # 2000
+
+a13 = memoria.storeVariableToMemory(6, 'int') # 4
+
+
+# print memoria.memoryBlock
 '''
-globalVariables.insert("if", "if", "if")
-globalVariables.insert("else", "else", "else")
-globalVariables.insert("while", "while", "while")
-globalVariables.insert("print", "print", "print")
-globalVariables.insert("function", "function", "function")
-globalVariables.insert("return", "return", "return")
-globalVariables.insert("true", "true", "true")
-globalVariables.insert("false", "false", "false")
-globalVariables.insert("program", "program", "program")
-globalVariables.insert("break", "break", "break")
-globalVariables.insert("DrawCircle", "DrawCircle", "DrawCircle")
-globalVariables.insert("DrawLine", "DrawLine", "DrawLine")
-globalVariables.insert("DrawTriangle", "DrawTriangle", "DrawTriangle")
-globalVariables.insert("DrawSquare", "DrawSquare", "DrawSquare")
-globalVariables.insert("DrawPolygon", "DrawPolygon", "DrawPolygon")
-globalVariables.insert("DrawCurve", "DrawCurve", "DrawCurve")
-globalVariables.insert("Red", "Red", "Red")
-globalVariables.insert("Green", "Green", "Green")
-globalVariables.insert("Blue", "Blue", "Blue")
-globalVariables.insert("Yellow", "Yellow", "Yellow")
-globalVariables.insert("Brown", "Brown", "Brown")
-globalVariables.insert("Black", "Black", "Black")
-globalVariables.insert("int", "int", "int")
-globalVariables.insert("boolean", "boolean", "boolean")
-globalVariables.insert("float", "float", "float")
-globalVariables.insert("string", "string", "string")
-globalVariables.insert("void", "void", "void")
-globalVariables.insert("input", "input", "input")
-globalVariables.insert("var", "var", "var")
+print (a1, 'int')
+print (a2, 'bool')
+print (a3, 'string')
+print (a4, 'int')
+print (a5, 'float')
+print (a6, 'int')
+print (a7, 'string')
+print (a8, 'string')
+print (a9, 'int')
+print (a10, 'bool')
+print (a11, 'float')
+print (a12, 'int')
+print (a13, 'int')
 '''
+print (memoria.getValueByAddress(1))
+memoria.deleteValueByAddress(2)
+print (memoria.getValueByAddress(2))

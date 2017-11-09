@@ -16,3 +16,6 @@ class Stack:
 
     def size(self):
         return len(self.items)
+
+    def clear(self):
+        del self.items[:]

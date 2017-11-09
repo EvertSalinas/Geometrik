@@ -3,7 +3,7 @@ import sys
 
 sys.path.append("..")
 
-from scannerLex import tokens
+from scanner import tokens
 from DataStructures.FunctionsDirectory import functions_Directory
 from DataStructures.Stack import Stack
 from DataStructures.VariablesTable import vars_Table
@@ -20,16 +20,20 @@ semanticCube = semantic_Cube();
 # Scope management variables
 currentScope = ""
 globalScope = ""
+calledFunction = ""
 
 # Counter variables
 quadCounter = 1
 tempCounter = 1
+argumCounter = 0
 
 # Stacks
 operatorsStack = Stack()
 operandsStack = Stack()
 typesStack = Stack()
 jumpsStack = Stack()
+argumentStack = Stack()
+argumTypeStack = Stack()
 
 # Queues
 quadQueue = Queue()
@@ -37,6 +41,9 @@ quadQueue = Queue()
 # Dimension management variables
 dimension = {}
 dimensionVar = ""
+
+# Validation variables
+functionWithReturn = False
 
 # Grammar rules
 def p_PROGRAM(p):
@@ -55,7 +62,7 @@ def p_add_global_function(p):
     add_global_function :
     '''
     # Call function to add global function to FunctionsDirectory
-    addGlobalFunc(p)
+    storeGlobalFunc(p)
 
 def p_MAIN(p):
     '''
@@ -112,12 +119,6 @@ def p_do_condition_operation(p):
     '''
     # Do the condition operations and quadruples
     doConditionOperation(p)
-
-def p_CONDITIONPRIMA(p):
-    '''
-    conditionprima : functioncall
-                   | sexpression
-    '''
 
 def p_ELSE(p):
     '''
@@ -186,12 +187,6 @@ def p_ASSIGNMENT_ARRAY(p):
     '''
     assignmentarray : empty
                     | LBRACKET sexpression RBRACKET
-    '''
-
-def p_ASSIGNMENT_PRIMA(p):
-    '''
-    assignmentprima : functioncall
-                    | sexpression
     '''
 
 def p_SEXPRESSION(p):
@@ -314,12 +309,6 @@ def p_CONSTANT(p):
              | functioncall
     '''
 
-def p_CONSTANTPRIMA(p):
-    '''
-    constantprima : empty
-                  | LBRACKET sexpression RBRACKET
-    '''
-
 def p_bool(p):
     '''
     bool : TRUE
@@ -357,19 +346,48 @@ def p_push_string_operand(p):
 
 def p_FUNCTIONCALL(p):
     '''
-    functioncall : ID LPAREN funcparam RPAREN SEMICOLON
+    functioncall : ID check_function_existance LPAREN generate_era funcargum RPAREN validate_arguments
     '''
 
-def p_FUNCPARAM(p):
+def p_check_existance_function(p):
     '''
-    funcparam : empty
-              | sexpression
-              | sexpression COMMA funcparam
+    check_function_existance :
     '''
+    checkFunctionExistance(p)
+
+def p_generate_era(p):
+    '''
+    generate_era :
+    '''
+    generateEra(p)
+
+def p_validate_arguments(p):
+    '''
+    validate_arguments :
+    '''
+    validateArguments(p)
+
+def p_FUNCARGUM(p):
+    '''
+    funcargum : sexpression store_argument funcargumprima
+              | empty
+    '''
+
+def p_FUNCARGUM_PRIMA(p):
+    '''
+    funcargumprima : COMMA sexpression store_argument funcargumprima
+                   | empty
+    '''
+
+def p_store_argument(p):
+    '''
+    store_argument :
+    '''
+    storeArgument(p)
 
 def p_FUNCTION(p):
     '''
-    function : FUNCTION functiontype ID LPAREN parameter RPAREN block function
+    function : FUNCTION functiontype ID store_function LPAREN parameter RPAREN vars block end_process function
              | empty
     '''
 
@@ -380,22 +398,41 @@ def p_FUNCTION_TYPE(p):
     '''
     p[0] = p[1]
 
+def p_store_function(p):
+    '''
+    store_function :
+    '''
+    storeFunction(p)
+
+def p_end_process(p):
+    '''
+    end_process :
+    '''
+    endProcess(p)
+
 def p_RETURN(p):
     '''
     return : RETURN sexpression SEMICOLON
     '''
+    returnOperation(p)
 
 def p_PARAMETER(p):
     '''
-    parameter : empty
-              | parameterprima
+    parameter : type ID store_parameter parameterprima
+              | empty
     '''
 
 def p_PARAMETERPRIMA(p):
     '''
-    parameterprima : type ID
-                   | type ID COMMA parameterprima
+    parameterprima : COMMA type ID store_parameter parameterprima
+                   | empty
     '''
+
+def p_store_parameter(p):
+    '''
+    store_parameter :
+    '''
+    storeParameter(p)
 
 def p_WRITE(p):
     '''
@@ -490,7 +527,7 @@ def p_EMPTY(p):
     pass
 
 # NoYacc FUNCTIONS..................
-def addGlobalFunc(p):
+def storeGlobalFunc(p):
     global currentScope
     global globalScope
 
@@ -499,8 +536,8 @@ def addGlobalFunc(p):
     currentScope = p[-1]
 
     # Create function directory variable
-    functionsDirectory.insert(currentScope, 'void')
-    print("add_global_func", currentScope, functionsDirectory.getFunctionType(currentScope))
+    functionsDirectory.insertFunction(currentScope, 'void')
+    print("storeGlobalFunction", currentScope, functionsDirectory.getFunctionType(currentScope))
 
 def addJumpToMain(p):
     global quadCounter
@@ -508,7 +545,7 @@ def addJumpToMain(p):
     # Get number of pending quad to fill
     end = jumpsStack.pop()
     # Get reverse position of Queue
-    quadNumber = (quadQueue.size()-1) - end
+    quadNumber = (quadQueue.size()) - end
     # Get quad to fill
     quad = quadQueue.get(quadNumber)
     # Full quads jump
@@ -545,7 +582,7 @@ def storeVariable(p):
         # Execute Variable Already Declared Error
         errorVariableAlreadyDeclared(p, varId)
     else:
-        print("store_variable", currentScope, functionsDirectory.getFunctionVariable(currentScope, varId),
+        print("storeVariable", currentScope, functionsDirectory.getFunctionVariable(currentScope, varId),
               "line: " + str(p.lexer.lineno))
 
 def pushOperand(p):
@@ -586,7 +623,7 @@ def pushOperand(p):
         # Push variables type to types stack
         typesStack.push(funcVarType)
 
-    print("push_id_operand", operandsStack.top(), typesStack.top())
+    print("pushIdOperand", operandsStack.top(), typesStack.top())
 
 def pushOperator(p):
     # Get operator
@@ -929,6 +966,163 @@ def doEndCycleOperations(p):
     print("doEndCycleOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand,
                                    quad.right_operand, quad.result), "line: " + str(p.lexer.lineno))
 
+def storeFunction(p):
+    global currentScope
+
+    # Get function name and type
+    funcId = p[-1]
+    funcType = p[-2]
+
+    if funcType != 'void':
+        # Add return variable
+        functionsDirectory.addFunctionVariable(globalScope, funcId, funcType, funcId)
+
+    # varId needs to be changed to virtual address
+    if functionsDirectory.lookupFunction(funcId):
+        # Execute Variable Already Declared Error
+        errorFunctionAlreadyDeclared(p, funcId)
+    else:
+        currentScope = funcId
+        functionsDirectory.insertFunction(funcId, funcType)
+        print("storeFunction", currentScope, functionsDirectory.getFunctionType(funcId),
+              "line: " + str(p.lexer.lineno))
+
+def storeParameter(p):
+    global currentScope
+
+    paramId = p[-1]
+    paramType = p[-2]
+
+    if functionsDirectory.addFunctionVariable(currentScope, paramId, paramType, paramId):
+        functionsDirectory.addParameterType(currentScope, paramType)
+        functionsDirectory.addParameterAddress(currentScope, paramId)
+        print("storeParameter1", currentScope, functionsDirectory.getFunctionVariable(currentScope, paramId),
+              "line: " + str(p.lexer.lineno))
+        print("storeParameter2", currentScope, functionsDirectory.getParameterTypes(currentScope),
+              "line: " + str(p.lexer.lineno))
+
+def returnOperation(p):
+    global quadCounter
+    global tempCounter
+    global functionWithReturn
+
+    functionWithReturn = True
+
+    operand = operandsStack.pop()
+    type = typesStack.pop()
+
+    functionType = functionsDirectory.getFunctionType(currentScope)
+    functionVariable = functionsDirectory.getFunctionVariable(globalScope,currentScope)
+    functionId = functionVariable[1][1]
+
+    if functionType == 'void':
+        errorVoidFunction(p)
+    else:
+        if type != functionType:
+            errorReturnWrongType(p)
+        else:
+            # Create quadruple for the negation operation
+            quad = Quadruple(quadCounter, 'RETURN', operand, None,
+                             functionId)  # Last parameter should be the VirtualAddress
+            # Add quad to QuadQueue
+            quadQueue.enqueue(quad)
+            # Push temporal variable to operands stack
+            operandsStack.push(functionId)
+            # Push temporal variables type to types stack
+            typesStack.push(functionType)
+            # Increment QuadCounter
+            quadCounter += 1
+            print("returnOperation", currentScope, ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+                              quad.result),
+                  "line: " + str(p.lexer.lineno))
+
+def endProcess(p):
+    global quadCounter
+
+    functionType = functionsDirectory.getFunctionType(currentScope)
+
+    if functionType != 'void':
+        if not functionWithReturn:
+            errorFunctionNoReturn(p)
+        else:
+            quad = Quadruple(quadCounter, 'ENDPROC', None, None, None)
+            quadQueue.enqueue(quad)
+            quadCounter += 1
+    else:
+        quad = Quadruple(quadCounter, 'ENDPROC', None, None, None)
+        quadQueue.enqueue(quad)
+        quadCounter += 1
+
+def checkFunctionExistance(p):
+    global calledFunction
+
+    calledFunction = p[-1]
+
+    # varId needs to be changed to virtual address
+    if not functionsDirectory.lookupFunction(calledFunction):
+        # Execute Variable Already Declared Error
+        errorFunctionDoesNotExist(p, calledFunction)
+    else:
+        print("checkFunctionExistance", currentScope, functionsDirectory.getFunctionType(calledFunction),
+              "line: " + str(p.lexer.lineno))
+
+def generateEra(p):
+    global quadCounter
+
+    funcId = p[-3]
+
+    quad = Quadruple(quadCounter,'ERA', funcId, None, None)
+    quadQueue.enqueue(quad)
+    quadCounter += 1
+
+def storeArgument(p):
+    argument = operandsStack.pop()
+    argumentType = typesStack.pop()
+    argumentStack.push(argument)
+    argumTypeStack.push(argumentType)
+
+def validateArguments(p):
+    global argumentStack
+    global argumTypeStack
+    global calledFunction
+    global quadCounter
+    global argumCounter
+    global tempCounter
+
+    paramIds = functionsDirectory.getParameterAddresses(calledFunction)
+
+    if functionsDirectory.validateParameters(calledFunction, argumTypeStack.items):
+        while not argumentStack.isEmpty():
+            quad = Quadruple(quadCounter, 'param', argumentStack.pop(), None, paramIds[argumCounter])
+            quadQueue.enqueue(quad)
+            quadCounter += 1
+            argumCounter += 1
+
+        quad = Quadruple(quadCounter, 'gosub', calledFunction, None, None)
+        quadQueue.enqueue(quad)
+        quadCounter += 1
+        functionType = functionsDirectory.getFunctionType(calledFunction)
+
+        if functionType != 'void':
+            # Create next temporal variable
+            tempOperand = "Temp" + str(tempCounter)
+            functionVariable = functionsDirectory.getFunctionVariable(globalScope, calledFunction)
+            functionId = functionVariable[1][1]
+
+            quad = Quadruple(quadCounter, '=', functionId, None, tempOperand)
+            quadQueue.enqueue(quad)
+            quadCounter += 1
+            operandsStack.push(tempOperand)
+            # Increment Temporal Variables Counter
+            tempCounter += 1
+
+        argumentStack.clear()
+        argumTypeStack.clear()
+        calledFunction = ""
+        argumCounter = 0
+    else:
+        print('Error: argument type mismatch in line {0} using function {1}.'.format(p.lexer.lineno, calledFunction))
+
 def endProgram(p):
     # Create ending quad
     quad = Quadruple(quadCounter, "END", None, None, None)
@@ -963,21 +1157,33 @@ def errorVariableAlreadyDeclared(p, varId):
     print('Error: variable ' + str(varId) + ' already declared in line ' + str(p.lexer.lineno))
     sys.exit()
 
+def errorFunctionAlreadyDeclared(p, funcId):
+    print('Error: Function ' + str(funcId) + ' already declared in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+def errorReturnWrongType(p):
+    print('Error: Returning wrong type from function in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+def errorFunctionNoReturn(p):
+    print('Error: Function has no return statement in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+def errorVoidFunction(p):
+    print('Error: Void function trying to return in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+def errorFunctionDoesNotExist(p, funcId):
+    print('Error: Function ' + str(funcId) + ' does not exists in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+
 # Build parser
 parser = yacc.yacc()
 
 #print("Filename or path: ")
 #filename = raw_input()
 
-file = open("../Tests/TestIfElse", 'r')
+file = open("../Tests/Test2", 'r')
 
 parser.parse(file.read())
-
-'''
-while True:
-    try:
-       s = raw_input('calc> ')
-    except EOFError:
-        break
-    parser.parse(s)
-'''

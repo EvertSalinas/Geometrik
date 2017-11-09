@@ -2,6 +2,12 @@ program test;
 
 var int a;
 
+function int func1(int r, int x)
+var int b;
+{
+    return 1+1;
+}
+
 int main() {
-    a = 4;
+    a = func1(4,6);
 }
