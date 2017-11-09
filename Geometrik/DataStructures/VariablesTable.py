@@ -3,11 +3,11 @@ class vars_Table:
         self.variables = {}
 
     # Insert new variable to the table
-    def insert(self, name, type, virtualAddress):
+    def insertVariable(self, name, type, virtualAddress):
         self.variables[name] = [type, virtualAddress]
 
     # Check if variable exists
-    def lookup(self, name):
+    def lookupVariable(self, name):
         return self.variables.has_key(name)
 
     # Return variable's values

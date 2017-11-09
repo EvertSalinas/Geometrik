@@ -255,3 +255,5 @@ class semantic_Cube:
 
     def getType(self, type1, type2, operator):
         return self.semantic_cube[type1][type2][operator]
+
+

@@ -5,11 +5,11 @@ class functions_Directory:
         self.functions = {}
 
     # Insert function to the directory
-    def insert(self, functionName, type):
-        self.functions[functionName] = {'type': type, 'parameters_types':[], 'parameter_addresses': [], 'variables': vars_Table()}
+    def insertFunction(self, functionName, type):
+        self.functions[functionName] = {'type': type, 'paramTypes':[], 'paramAddresses': [], 'variables': vars_Table()}
 
     # check if function exists
-    def lookup(self, functionName):
+    def lookupFunction(self, functionName):
         return self.functions.has_key(functionName)
 
     # Return the type of a function
@@ -18,52 +18,42 @@ class functions_Directory:
         return function['type']
 
     # Add list of parameter types to a function record
-    def addParameterTypes(self, functionName, parameterTypeList):
-        if self.lookup(functionName):
+    def addParameterType(self, functionName, parameterType):
+        if self.lookupFunction(functionName):
             function = self.functions[functionName]
-            function['parameters_types'] += parameterTypeList
+            function['paramTypes'].append(parameterType)
 
     # Add list of parameter addresses to a function record
-    def addParameterAddress(self, functionName, parameterAddressList):
-        if self.lookup(functionName):
+    def addParameterAddress(self, functionName, parameterAddress):
+        if self.lookupFunction(functionName):
             function = self.functions[functionName]
-            function['parameter_addresses'] += parameterAddressList
+            function['paramAddresses'].append(parameterAddress)
 
     # Return list of parameter types
     def getParameterTypes(self, functionName):
         function = self.functions[functionName]
-        return function['parameters_types']
+        return function['paramTypes']
 
     # Return list of parameter addresses
     def getParameterAddresses(self, functionName):
         function = self.functions[functionName]
-        return function['parameter_addresses']
+        return function['paramAddresses']
 
     # Validate parameters types match from functioncall
-    def validateParameters(self, functionName, argumentTypeList):
+    def validateParameters(self, functionName, argumentTypes):
         function = self.functions[functionName]
 
-        if self.lookup(functionName):
-            return function['parameters_types'] == argumentTypeList
-
-    # Add starting quadruple
-    def addStartingQuad(self, functionName, quadruple):
-        function = self.functions[functionName]
-        function['starting_quadruple'] = quadruple
-
-    # Return starting quadruple
-    def getStartingQuad(self, functionName):
-        function = self.functions[functionName]
-        return function['starting_quadruple']
+        if self.lookupFunction(functionName):
+            return function['paramTypes'] == argumentTypes
 
     # Insert variable to the VarsTable of a function
     def addFunctionVariable(self, functionName, variableName, variableType, address):
         function = self.functions[functionName]
 
-        if function['variables'].lookup(variableName):
+        if function['variables'].lookupVariable(variableName):
             return False
         else:
-            function['variables'].insert(variableName, variableType, address)
+            function['variables'].insertVariable(variableName, variableType, address)
             return True
 
     # Return variable from a VarsTable of a function
