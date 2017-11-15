@@ -1,4 +1,4 @@
-program test;
+program testcode;
 
 var int a;
 var string d;
@@ -12,6 +12,6 @@ int main() {
     g = !g;
     print(a);
     if(true) {
-
+        a = 3;
     }
 }

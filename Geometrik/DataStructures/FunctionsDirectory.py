@@ -5,8 +5,9 @@ class functions_Directory:
         self.functions = {}
 
     # Insert function to the directory
-    def insertFunction(self, functionName, type):
-        self.functions[functionName] = {'type': type, 'paramTypes':[], 'paramAddresses': [], 'variables': vars_Table()}
+    def insertFunction(self, functionName, type, startCuadNumber):
+        self.functions[functionName] = {'type': type, 'startQuadNumber':startCuadNumber,
+                                        'paramTypes':[], 'paramAddresses': [], 'variables': vars_Table()}
 
     # check if function exists
     def lookupFunction(self, functionName):
@@ -16,6 +17,15 @@ class functions_Directory:
     def getFunctionType(self, functionName):
         function = self.functions[functionName]
         return function['type']
+
+    def getStartQuadNumber(self, functionName):
+        function = self.functions[functionName]
+        return function['startQuadNumber']
+
+    def setStartQuadNumber(self, functionName, startQuadNumber):
+        if self.lookupFunction(functionName):
+            function = self.functions[functionName]
+            function['startQuadNumber'] = startQuadNumber
 
     # Add list of parameter types to a function record
     def addParameterType(self, functionName, parameterType):
@@ -69,3 +79,11 @@ class functions_Directory:
     def getFunctionIdByAddress(self, globalScopeName, virtualAddress):
         function = self.functions[globalScopeName]
         return function['variables'].getIdByAddress(virtualAddress)
+
+    def addDimensionToVariable(self, functionName, variableName, dimension):
+        function = self.functions[functionName]
+        function['variables'].addDimension(variableName, dimension)
+
+    def getVariableDimension(self, functionName, variableName):
+        function = self.functions[functionName]
+        return function['variables'].getDimension(variableName)

@@ -1,13 +1,17 @@
 program test;
 
 var int a;
+var string b;
+var float c;
+var bool d;
 
-function int func1(int r, int x)
-var int b;
+function void func1()
 {
-    return 1+1;
+
 }
 
 int main() {
-    a = func1(4,6);
+    a = 3 + 5;
+    func1();
+    a = 4;
 }
