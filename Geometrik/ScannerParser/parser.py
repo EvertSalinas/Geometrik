@@ -10,12 +10,16 @@ from DataStructures.VariablesTable import vars_Table
 from DataStructures.Quadruple import Quadruple
 from DataStructures.Queue import Queue
 from SemanticCube.SemanticCube import semantic_Cube
-
+from Memory.Memory import memory_Block
+from VirtualMachine.VirtualMachine import virtual_Machine
 #-----------------------------------------------------------------
 
 # Directories
-functionsDirectory = functions_Directory();
-semanticCube = semantic_Cube();
+functionsDirectory = functions_Directory()
+semanticCube = semantic_Cube()
+
+# Memory
+memory = memory_Block()
 
 # Scope management variables
 currentScope = ""
@@ -24,7 +28,6 @@ calledFunction = ""
 
 # Counter variables
 quadCounter = 1
-tempCounter = 1
 argumCounter = 0
 
 # Stacks
@@ -34,13 +37,25 @@ typesStack = Stack()
 jumpsStack = Stack()
 argumentStack = Stack()
 argumTypeStack = Stack()
+predefParamStack = Stack()
 
 # Queues
 quadQueue = Queue()
 
 # Dimension management variables
-dimension = {}
-dimensionVar = ""
+dimenVar = ""
+dimenSupLim = 0
+
+# Global variables
+color = ""
+endProcNumber = 0
+
+
+# Default Values
+defaultInt = 0
+defaultFloat = 0.0
+defaultBool = 'false'
+defaultString = 'Null'
 
 # Validation variables
 functionWithReturn = False
@@ -66,8 +81,14 @@ def p_add_global_function(p):
 
 def p_MAIN(p):
     '''
-    main : INTTYPE MAIN LPAREN RPAREN add_jump_to_main block
+    main : INTTYPE MAIN change_to_global LPAREN RPAREN add_jump_to_main block
     '''
+
+def p_change_to_global(p):
+    '''
+    change_to_global :
+    '''
+    changeToGlobal(p)
 
 def p_goto_main(p):
     '''
@@ -101,7 +122,7 @@ def p_STATUTE(p):
             | write
             | read
             | cycle
-            | functioncall
+            | functioncall SEMICOLON
             | predefined
             | return
     '''
@@ -135,7 +156,7 @@ def p_do_else_operation(p):
 
 def p_VARS(p):
     '''
-    vars : VAR type ID array store_variable SEMICOLON vars
+    vars : VAR type ID array_declaration store_variable SEMICOLON vars
          | empty
     '''
 
@@ -146,11 +167,23 @@ def p_store_variable(p):
     # Store Variable in VarsTable of the current scope
     storeVariable(p)
 
-def p_ARRAY(p):
+def p_ARRAY_DECLARATION(p):
     '''
-    array : LBRACKET sexpression RBRACKET
+    array_declaration : LBRACKET dimen_variable sexpression calculate_dimen RBRACKET
           | empty
     '''
+
+def p_dimen_variable(p):
+    '''
+    dimen_variable :
+    '''
+    dimenVariable(p)
+
+def p_calulate_dimen(p):
+    '''
+    calculate_dimen :
+    '''
+    calculateDimen(p)
 
 def p_TYPE(p):
     '''
@@ -164,7 +197,7 @@ def p_TYPE(p):
 
 def p_ASSIGNMENT(p):
     '''
-    assignment : ID push_id_operand ASSIGN push_operator sexpression SEMICOLON
+    assignment : ID push_id_operand array ASSIGN push_operator sexpression SEMICOLON
     '''
     # Do the assignment operations and quadruples
     doAssignOperation(p)
@@ -183,10 +216,10 @@ def p_push_operator(p):
     # Push operator to stack
     pushOperator(p)
 
-def p_ASSIGNMENT_ARRAY(p):
+def p_ARRAY_STRUCTURE(p):
     '''
-    assignmentarray : empty
-                    | LBRACKET sexpression RBRACKET
+    array_structure : LBRACKET sexpression RBRACKET
+                    | empty
     '''
 
 def p_SEXPRESSION(p):
@@ -300,7 +333,7 @@ def p_pop_false_bottom(p):
 
 def p_CONSTANT(p):
     '''
-    varConst : ID push_id_operand
+    varConst : ID push_id_operand array
              | FLOAT push_float_operand
              | INT push_int_operand
              | bool push_bool_operand
@@ -309,7 +342,25 @@ def p_CONSTANT(p):
              | functioncall
     '''
 
-def p_bool(p):
+def p_ARRAY(p):
+    '''
+    array : LBRACKET access_dimen_var sexpression validate_index RBRACKET
+          | empty
+    '''
+
+def p_validate_index(p):
+    '''
+    validate_index :
+    '''
+    validateIndex(p)
+
+def p_access_dimen_var(p):
+    '''
+    access_dimen_var :
+    '''
+    accessDimenVariable(p)
+
+def p_BOOL(p):
     '''
     bool : TRUE
          | FALSE
@@ -387,7 +438,7 @@ def p_store_argument(p):
 
 def p_FUNCTION(p):
     '''
-    function : FUNCTION functiontype ID store_function LPAREN parameter RPAREN vars block end_process function
+    function : FUNCTION functiontype ID store_function LPAREN parameter RPAREN vars add_func_quad_start block end_process function
              | empty
     '''
 
@@ -397,6 +448,12 @@ def p_FUNCTION_TYPE(p):
                  | type
     '''
     p[0] = p[1]
+
+def p_add_func_quad_start(p):
+    '''
+    add_func_quad_start :
+    '''
+    addFunctionQuadStart(p)
 
 def p_store_function(p):
     '''
@@ -418,7 +475,7 @@ def p_RETURN(p):
 
 def p_PARAMETER(p):
     '''
-    parameter : type ID store_parameter parameterprima
+    parameter : type ID store_parameter array parameterprima
               | empty
     '''
 
@@ -443,7 +500,7 @@ def p_WRITE(p):
 
 def p_READ(p):
     '''
-    read : ID push_id_operand ASSIGN push_operator INPUT SEMICOLON
+    read : ID push_id_operand array ASSIGN push_operator INPUT SEMICOLON
     '''
     # Do Read quadruples
     doReadOperation(p)
@@ -492,33 +549,51 @@ def p_PREDEFINED(p):
 
 def p_DRAWLINE(p):
     '''
-    drawline : DRAWLINE LPAREN sexpression  COMMA sexpression  COMMA sexpression  COMMA sexpression  COMMA color RPAREN SEMICOLON
+    drawline : DRAWLINE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color RPAREN SEMICOLON
     '''
+    drawLine(p)
 
 def p_DRAWSQUARE(p):
     '''
-    drawsquare : DRAWSQUARE LPAREN sexpression  COMMA sexpression COMMA color RPAREN SEMICOLON
+    drawsquare : DRAWSQUARE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color RPAREN SEMICOLON
     '''
+    drawSquare(p)
 
 def p_DRAWTRIANGLE(p):
     '''
-    drawtriangle : DRAWTRIANGLE LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
+    drawtriangle : DRAWTRIANGLE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color RPAREN SEMICOLON
     '''
+    drawTriangle(p)
 
 def p_DRAWCIRCLE(p):
     '''
-    drawcircle : DRAWCIRCLE LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
+    drawcircle : DRAWCIRCLE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color RPAREN SEMICOLON
     '''
+    drawCircle(p)
 
 def p_DRAWCURVE(p):
     '''
-    drawcurve : DRAWCURVE LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
+    drawcurve : DRAWCURVE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color RPAREN SEMICOLON
     '''
+    drawCurve(p)
 
 def p_DRAWPOLYGON(p):
     '''
-    drawpolygon : DRAWPOLYGON LPAREN sexpression COMMA sexpression COMMA color RPAREN SEMICOLON
+    drawpolygon : DRAWPOLYGON LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color RPAREN SEMICOLON
     '''
+    drawPolygon(p)
+
+def p_store_predefined_argument(p):
+    '''
+    store_predefined_argument :
+    '''
+    storePredefinedArgument(p)
+
+def p_store_color(p):
+    '''
+    store_color :
+    '''
+    storeColor(p)
 
 def p_EMPTY(p):
     '''
@@ -536,8 +611,18 @@ def storeGlobalFunc(p):
     currentScope = p[-1]
 
     # Create function directory variable
-    functionsDirectory.insertFunction(currentScope, 'void')
+    functionsDirectory.insertFunction(currentScope, 'void', None)
     print("storeGlobalFunction", currentScope, functionsDirectory.getFunctionType(currentScope))
+
+def changeToGlobal(p):
+    global currentScope
+    global globalScope
+
+    # Set the currentScope to the globalScope
+    currentScope = globalScope
+    # Add the quad number where main function starts
+    functionsDirectory.setStartQuadNumber(globalScope, quadCounter)
+    print("changeToGlobal", currentScope, functionsDirectory.getStartQuadNumber(globalScope))
 
 def addJumpToMain(p):
     global quadCounter
@@ -572,18 +657,64 @@ def gotoMain(p):
 
 def storeVariable(p):
     global currentScope
+    global dimenVar
+    global dimenSupLim
 
     # Get varable name and type
     varId = p[-2]
     varType = p[-3]
 
-    # varId needs to be changed to virtual address
-    if not functionsDirectory.addFunctionVariable(currentScope, varId, varType, varId):
-        # Execute Variable Already Declared Error
-        errorVariableAlreadyDeclared(p, varId)
+    # Set default value depending on the variable type
+    if varType == 'int':
+        value = defaultInt
+    elif varType == 'float':
+        value = defaultFloat
+    elif varType == 'bool':
+        value = defaultBool
+    elif varType == 'string':
+        value = defaultString
+
+    # Check if the current scope is the main program
+    if currentScope == globalScope:
+        # Check if the variable is dimensional or not
+        if dimenVar != '':
+            # Store the dimensional variable into memory
+            virtualAddress = memory.storeDimensionVarToMemory(value, varType, dimenSupLim)
+        else:
+            # Store the variable into memory
+            virtualAddress = memory.storeVariableToMemory(value, varType)
     else:
-        print("storeVariable", currentScope, functionsDirectory.getFunctionVariable(currentScope, varId),
-              "line: " + str(p.lexer.lineno))
+        # Check if the variable is dimensional or not
+        if dimenVar != '':
+            # Check if the temporal is dimensional or not
+            virtualAddress = memory.storeDimensionTempToMemory(value, varType, dimenSupLim)
+        else:
+            # Store the dimensional temporal into memory
+            virtualAddress = memory.storeTempToMemory(value, varType)
+
+    # Check if the virtual address
+    if virtualAddress == None:
+        errorCannotAllocate(p, varId)
+    else:
+        # varId needs to be changed to virtual address
+        if not functionsDirectory.addFunctionVariable(currentScope, varId, varType, virtualAddress):
+            # Execute Variable Already Declared Error
+            errorVariableAlreadyDeclared(p, varId)
+        else:
+            # Push the virtual address of the variable to operandsStack
+            operandsStack.push(virtualAddress)
+            # Push the type of the variable to operandsStack
+            typesStack.push(varType)
+            # Check if the variable is dimensional
+            if dimenVar != '':
+                # Add dimension to the variable on the VarsTable
+                functionsDirectory.addDimensionToVariable(currentScope, varId, dimenSupLim)
+                # Restore dimensional global variables
+                dimenSupLim = 0
+                dimenVar = ''
+
+            print("storeVariable", currentScope, functionsDirectory.getFunctionVariable(currentScope, varId),
+                      "line: " + str(p.lexer.lineno))
 
 def pushOperand(p):
     global currentScope
@@ -639,8 +770,10 @@ def pushFloatOperand(p):
 
     # Get operand
     operand = p[-1]
+    # Store constant to memory and get virtual address
+    virtualAddress = memory.storeConstantToMemory(operand, 'float')
     # Push operand to operands stack
-    operandsStack.push(operand)
+    operandsStack.push(virtualAddress)
     # Push type to operands stack
     typesStack.push('float')
 
@@ -652,8 +785,10 @@ def pushIntOperand(p):
 
     # Get operand
     operand = p[-1]
+    # Store constant to memory and get virtual address
+    virtualAddress = memory.storeConstantToMemory(operand, 'int')
     # Push operand to operands stack
-    operandsStack.push(operand)
+    operandsStack.push(virtualAddress)
     # Push type to operands stack
     typesStack.push('int')
 
@@ -665,8 +800,10 @@ def pushBoolOperand(p):
 
     # Get operand
     operand = p[-1]
+    # Store constant to memory and get virtual address
+    virtualAddress = memory.storeConstantToMemory(operand, 'bool')
     # Push operand to operands stack
-    operandsStack.push(operand)
+    operandsStack.push(virtualAddress)
     # Push type to operands stack
     typesStack.push('bool')
 
@@ -678,8 +815,10 @@ def pushStringOperand(p):
 
     # Get operand
     operand = p[-1]
+    # Store constant to memory and get virtual address
+    virtualAddress = memory.storeConstantToMemory(operand, 'string')
     # Push operand to operands stack
-    operandsStack.push(operand)
+    operandsStack.push(virtualAddress)
     # Push type to operands stack
     typesStack.push('string')
 
@@ -726,7 +865,6 @@ def doWriteOperation(p):
 
 def doNotOperation(p):
     global semanticCube
-    global tempCounter
     global quadCounter
 
     # Check if the operators stack is not empty
@@ -745,27 +883,26 @@ def doNotOperation(p):
                 resultType = 'Error'
             else:
                 resultType = 'bool'
+                value = defaultBool
 
             # Check if the result type is bool or not
             if resultType != 'bool':
                 # Execute type missmatch error
                 errorTypeMismatch(p)
             else:
-                # Create next temporal variable
-                tempOperand = "Temp"+str(tempCounter)
+                # Store variable to memory and get virtual address
+                virtualAddress = memory.storeTempToMemory(value, resultType)
                 # Create quadruple for the negation operation
                 quad = Quadruple(quadCounter, operator, operand, None,
-                                 tempOperand)  # Last parameter should be the VirtualAddress
+                                 virtualAddress)  # Last parameter should be the VirtualAddress
                 # Add quad to QuadQueue
                 quadQueue.enqueue(quad)
                 # Push temporal variable to operands stack
-                operandsStack.push(tempOperand)
+                operandsStack.push(virtualAddress)
                 # Push temporal variables type to types stack
                 typesStack.push(resultType)
                 # Increment QuadCounter
                 quadCounter += 1
-                # Increment Temporal Variables Counter
-                tempCounter += 1
 
                 print("doNotOperation",("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
                 quad.result), str(p.lexer.lineno))
@@ -834,7 +971,6 @@ def doElseOperation(p):
                                 quad.right_operand, quad.result), "line: " +str(p.lexer.lineno))
 
 def doAssignOperation(p):
-    # Global variables to use
     global semanticCube
     global quadCounter
 
@@ -849,27 +985,29 @@ def doAssignOperation(p):
     # Retrieve operator of the assignment
     operator = operatorsStack.pop()
 
-    # Do the semantic evaluation of the assignment
-    resultType = semanticCube.getType(leftType, rightType, operator)
-
-    # Check if the result type is Error or not
-    if resultType == 'Error':
-        # Execute type missmatch error
-        errorTypeMismatch(p)
+    if rightType == 'void':
+        errorNotReturnFunction(p)
     else:
-        # Create cuadruple for assignment
-        quad = Quadruple(quadCounter, operator, rightOperand, None, leftOperand) # Last parameter should be the VirtualAddress
-        # Add quad to QuadQueue
-        quadQueue.enqueue(quad)
-        # Increment QuadCounter
-        quadCounter += 1
+        # Do the semantic evaluation of the assignment
+        resultType = semanticCube.getType(leftType, rightType, operator)
 
-        print("doAssignOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand,
-              quad.right_operand, quad.result), "line: " +str(p.lexer.lineno))
+        # Check if the result type is Error or not
+        if resultType == 'Error':
+            # Execute type missmatch error
+            errorTypeMismatch(p)
+        else:
+            # Create cuadruple for assignment
+            quad = Quadruple(quadCounter, operator, rightOperand, None, leftOperand) # Last parameter should be the VirtualAddress
+            # Add quad to QuadQueue
+            quadQueue.enqueue(quad)
+            # Increment QuadCounter
+            quadCounter += 1
+
+            print("doAssignOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand,
+                  quad.right_operand, quad.result), "line: " +str(p.lexer.lineno))
 
 def doOperations(p):
     global semanticCube
-    global tempCounter
     global quadCounter
 
     # Retrieve right operand of the operation
@@ -886,25 +1024,33 @@ def doOperations(p):
     # Do the semantic evaluation of the operation
     resultType = semanticCube.getType(leftType, rightType, operator)
 
+    # Set default value depending on the variable type
+    if resultType == 'int':
+        value = defaultInt
+    elif resultType == 'float':
+        value = defaultFloat
+    elif resultType == 'bool':
+        value = defaultBool
+    elif resultType == 'string':
+        value = defaultString
+
     # Check if the result type is Error or not
     if resultType == 'Error':
         # Execute type missmatch error
         errorTypeMismatch(p)
     else:
-        # Create temporal variable
-        tempOperand = "Temp" + str(tempCounter)
+        # Store variable into memory
+        virtualAddress = memory.storeTempToMemory(value, resultType)
         # Create cuadruple for assignment
-        quad = Quadruple(quadCounter, operator, leftOperand, rightOperand, tempOperand) # Last parameter should be the VirtualAddress
+        quad = Quadruple(quadCounter, operator, leftOperand, rightOperand, virtualAddress)
         # Add quad to QuadQueue
         quadQueue.enqueue(quad)
-        # Push temporal variable to operands stack
-        operandsStack.push(tempOperand)
+        # Push temporals virtual address to operands stack
+        operandsStack.push(virtualAddress)
         # Push temporal variables type to types stack
         typesStack.push(resultType)
         # Increment QuadCounter
         quadCounter += 1
-        # Increment temporal variables counter
-        tempCounter += 1
 
         print("doOperation", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
               quad.result))
@@ -973,51 +1119,106 @@ def storeFunction(p):
     funcId = p[-1]
     funcType = p[-2]
 
-    if funcType != 'void':
-        # Add return variable
-        functionsDirectory.addFunctionVariable(globalScope, funcId, funcType, funcId)
+    # Set default value depending on the variables type
+    if funcType == 'int':
+        value = defaultInt
+    elif funcType == 'float':
+        value = defaultFloat
+    elif funcType == 'bool':
+        value = defaultBool
+    elif funcType == 'string':
+        value = defaultString
 
-    # varId needs to be changed to virtual address
+    # ...........RECURSIVENESS..............
+    # Check if the function type is void or not
+    if funcType != 'void':
+        # Store the functions returning variable space
+        virtualAddress = memory.storeVariableToMemory(value, funcType)
+        # Add return variable
+        functionsDirectory.addFunctionVariable(globalScope, funcId, funcType, virtualAddress)
+
+        print("storeFunction Virtual Address", virtualAddress)
+
+    # Check if the function already exists
     if functionsDirectory.lookupFunction(funcId):
         # Execute Variable Already Declared Error
         errorFunctionAlreadyDeclared(p, funcId)
     else:
+        # Change the scope to the current local (Function)
         currentScope = funcId
-        functionsDirectory.insertFunction(funcId, funcType)
+        # Store function into the functions directory
+        functionsDirectory.insertFunction(funcId, funcType, None)
+
         print("storeFunction", currentScope, functionsDirectory.getFunctionType(funcId),
               "line: " + str(p.lexer.lineno))
 
 def storeParameter(p):
     global currentScope
 
+    # Get parameter name and type
     paramId = p[-1]
     paramType = p[-2]
 
-    if functionsDirectory.addFunctionVariable(currentScope, paramId, paramType, paramId):
+    # Set default value depending on the variables type
+    if paramType == 'int':
+        value = defaultInt
+    elif paramType == 'float':
+        value = defaultFloat
+    elif paramType == 'bool':
+        value = defaultBool
+    elif paramType == 'string':
+        value = defaultString
+
+    # Store the parameter into memory
+    virtualAddress = memory.storeTempToMemory(value, paramType)
+
+    print("storeParameter Virtual Address", globalScope, virtualAddress)
+
+    # Add variable to functions vars table
+    if functionsDirectory.addFunctionVariable(currentScope, paramId, paramType, virtualAddress):
+        # Add parameter type to the function
         functionsDirectory.addParameterType(currentScope, paramType)
+        # Add parameter virtual address to the function
         functionsDirectory.addParameterAddress(currentScope, paramId)
+
         print("storeParameter1", currentScope, functionsDirectory.getFunctionVariable(currentScope, paramId),
               "line: " + str(p.lexer.lineno))
         print("storeParameter2", currentScope, functionsDirectory.getParameterTypes(currentScope),
               "line: " + str(p.lexer.lineno))
 
+def addFunctionQuadStart(p):
+    global quadCounter
+    global currentScope
+
+    # Add the quad number where main function starts
+    functionsDirectory.setStartQuadNumber(currentScope, quadCounter)
+
+    print("addFunctionQuadStart", currentScope, functionsDirectory.getStartQuadNumber(currentScope),
+          "line: " + str(p.lexer.lineno))
+
 def returnOperation(p):
     global quadCounter
-    global tempCounter
     global functionWithReturn
 
-    functionWithReturn = True
-
-    operand = operandsStack.pop()
-    type = typesStack.pop()
-
+    # Get the functions type
     functionType = functionsDirectory.getFunctionType(currentScope)
-    functionVariable = functionsDirectory.getFunctionVariable(globalScope,currentScope)
-    functionId = functionVariable[1][1]
 
+    # Check if the function type is void or not
     if functionType == 'void':
         errorVoidFunction(p)
     else:
+        # Set the variable that identifies if the function has return or not
+        functionWithReturn = True
+        # Get return operand
+        operand = operandsStack.pop()
+        # Get return operands type
+        type = typesStack.pop()
+        # Get the returning functions variable
+        functionVariable = functionsDirectory.getFunctionVariable(globalScope, currentScope)
+        # Get the function name
+        functionId = functionVariable[0]
+
+        # Check if the operands type is the same as the function type
         if type != functionType:
             errorReturnWrongType(p)
         else:
@@ -1032,6 +1233,7 @@ def returnOperation(p):
             typesStack.push(functionType)
             # Increment QuadCounter
             quadCounter += 1
+
             print("returnOperation", currentScope, ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
                               quad.result),
                   "line: " + str(p.lexer.lineno))
@@ -1039,26 +1241,39 @@ def returnOperation(p):
 def endProcess(p):
     global quadCounter
 
+    # Get the functions type
     functionType = functionsDirectory.getFunctionType(currentScope)
 
+    # Check if the functions type is void or not
     if functionType != 'void':
+        # Check if the function has return or not
         if not functionWithReturn:
             errorFunctionNoReturn(p)
         else:
+            # Create quadruple for the end process
             quad = Quadruple(quadCounter, 'ENDPROC', None, None, None)
+            # Add quad to QuadQueue
             quadQueue.enqueue(quad)
+            # Increment QuadCounter
             quadCounter += 1
     else:
+        # Create quadruple for the end process
         quad = Quadruple(quadCounter, 'ENDPROC', None, None, None)
+        # Add quad to QuadQueue
         quadQueue.enqueue(quad)
+        # Increment QuadCounter
         quadCounter += 1
+
+    # When function ends, clear temporal memory
+    memory.clearTempMemory()
 
 def checkFunctionExistance(p):
     global calledFunction
 
+    # Get the function that is called
     calledFunction = p[-1]
 
-    # varId needs to be changed to virtual address
+    # Check if the function exists or not
     if not functionsDirectory.lookupFunction(calledFunction):
         # Execute Variable Already Declared Error
         errorFunctionDoesNotExist(p, calledFunction)
@@ -1069,16 +1284,29 @@ def checkFunctionExistance(p):
 def generateEra(p):
     global quadCounter
 
+    # Get the functions name
     funcId = p[-3]
 
+    # Create quadruple for ERA operation
     quad = Quadruple(quadCounter,'ERA', funcId, None, None)
+    # Add quad to QuadQueue
     quadQueue.enqueue(quad)
+    # Increment QuadCounter
     quadCounter += 1
 
+    print("generateEra", currentScope,
+          ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+           quad.result),
+          "line: " + str(p.lexer.lineno))
+
 def storeArgument(p):
+    # Get the argument
     argument = operandsStack.pop()
+    # Get the argument type
     argumentType = typesStack.pop()
+    # Push the argument to the argument stack
     argumentStack.push(argument)
+    # Push the argument type to the argument type stack
     argumTypeStack.push(argumentType)
 
 def validateArguments(p):
@@ -1087,43 +1315,296 @@ def validateArguments(p):
     global calledFunction
     global quadCounter
     global argumCounter
-    global tempCounter
+    global endProcNumber
 
-    paramIds = functionsDirectory.getParameterAddresses(calledFunction)
+    # Get the list of parameter addresses
+    paramAddresses = functionsDirectory.getParameterAddresses(calledFunction)
 
-    if functionsDirectory.validateParameters(calledFunction, argumTypeStack.items):
+    # Check if the arguments of the call are the same than the functions declaration
+    if not functionsDirectory.validateParameters(calledFunction, argumTypeStack.items):
+        errorArgumentsMissmatch(p)
+    else:
         while not argumentStack.isEmpty():
-            quad = Quadruple(quadCounter, 'param', argumentStack.pop(), None, paramIds[argumCounter])
+            # Create quadruple for ERA operation
+            quad = Quadruple(quadCounter, 'param', argumentStack.pop(), None, paramAddresses[argumCounter])
+            # Add quad to QuadQueue
             quadQueue.enqueue(quad)
+            # Increment QuadCounter
             quadCounter += 1
+            # Increment argumCounter
             argumCounter += 1
 
+            print("validateArguments 1", currentScope,
+                  ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+                   quad.result),
+                  "line: " + str(p.lexer.lineno))
+
+        # Create quadruple for the gosub operation
         quad = Quadruple(quadCounter, 'gosub', calledFunction, None, None)
+        # Add quad to QuadQueue
         quadQueue.enqueue(quad)
+        # Increment QuadCounter
         quadCounter += 1
+        # Get functions type
         functionType = functionsDirectory.getFunctionType(calledFunction)
 
-        if functionType != 'void':
-            # Create next temporal variable
-            tempOperand = "Temp" + str(tempCounter)
-            functionVariable = functionsDirectory.getFunctionVariable(globalScope, calledFunction)
-            functionId = functionVariable[1][1]
+        print("validateArguments 2", currentScope,
+              ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+               quad.result),
+              "line: " + str(p.lexer.lineno))
 
-            quad = Quadruple(quadCounter, '=', functionId, None, tempOperand)
-            quadQueue.enqueue(quad)
-            quadCounter += 1
-            operandsStack.push(tempOperand)
+        # Check if the functions is void or not
+        if functionType == 'void':
+            # Push Error Tag if the function is void
+            operandsStack.push('Error')
+            # Push the functions type to the typesStack
+            typesStack.push(functionType)
+        else:
+            # Get the functions returning variable
+            funcVar = functionsDirectory.getFunctionVariable(globalScope, calledFunction)
+            # Get variable virtual address
+            varVirtualAddress = funcVar[1][1]
+            #.........func1..........
+            # Get functions Name
+            functionId = funcVar[0]
+
+            # Push functions name to the operands stack
+            operandsStack.push(functionId)
+            # Push functions type to the typesStack
+            typesStack.push(functionType)
             # Increment Temporal Variables Counter
-            tempCounter += 1
+            print("validateArguments 3", currentScope, "line: " + str(p.lexer.lineno))
 
-        argumentStack.clear()
-        argumTypeStack.clear()
+        # Clear arguments elements
+        argumentStack = Stack()
+        argumTypeStack = Stack()
         calledFunction = ""
         argumCounter = 0
+
+def storePredefinedArgument(p):
+    global currentScope
+
+    # Get operand
+    operand = operandsStack.pop()
+    # Get operand type
+    type = typesStack.pop()
+
+    # Check if the arguments are numeric or not
+    if type != 'int' and type != 'float':
+        errorArgumentTypeMissmatch(p)
     else:
-        print('Error: argument type mismatch in line {0} using function {1}.'.format(p.lexer.lineno, calledFunction))
+        # Push predefined function parameter to the stack
+        predefParamStack.push(operand)
+
+        print("storePredefinedArgument", currentScope, operand,
+              "line: " + str(p.lexer.lineno))
+
+def storeColor(p):
+    global color
+
+    # Store color
+    color = p[-1]
+
+def drawLine(p):
+    global color
+    global predefParamStack
+    global quadCounter
+
+    # Create quadruple for the DRAWLINE predefined function
+    quad = Quadruple(quadCounter, 'DRAWLINE', predefParamStack.items, color, None)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+    # Increment quadCounter
+    quadCounter += 1
+
+    # Reset parameter stack and color
+    predefParamStack = Stack()
+    color = ""
+
+def drawSquare(p):
+    global color
+    global predefParamStack
+    global quadCounter
+
+    # Create quadruple for the DRAWSQUARE predefined function
+    quad = Quadruple(quadCounter, 'DRAWSQUARE', predefParamStack.items, color, None)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+    # Increment quadCounter
+    quadCounter += 1
+
+    # Reset parameter stack and color
+    predefParamStack = Stack()
+    color = ""
+
+def drawTriangle(p):
+    global color
+    global predefParamStack
+    global quadCounter
+
+    # Create quadruple for the DRAWTRIANGLE predefined function
+    quad = Quadruple(quadCounter, 'DRAWTRIANGLE', predefParamStack.items, color, None)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+    # Increment quadCounter
+    quadCounter += 1
+
+    # Reset parameter stack and color
+    predefParamStack = Stack()
+    color = ""
+
+def drawCircle(p):
+    global color
+    global predefParamStack
+    global quadCounter
+
+    # Create quadruple for the DRAWCIRCLE predefined function
+    quad = Quadruple(quadCounter, 'DRAWCIRCLE', predefParamStack.items, color, None)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+    # Increment quadCounter
+    quadCounter += 1
+
+    # Reset parameter stack and color
+    predefParamStack = Stack()
+    color = ""
+
+def drawCurve(p):
+    global color
+    global predefParamStack
+    global quadCounter
+
+    # Create quadruple for the DRAWCURVE predefined function
+    quad = Quadruple(quadCounter, 'DRAWCURVE', predefParamStack.items, color, None)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+    # Increment quadCounter
+    quadCounter += 1
+
+    # Reset parameter stack and color
+    predefParamStack = Stack()
+    color = ""
+
+def drawPolygon(p):
+    global color
+    global predefParamStack
+    global quadCounter
+
+    # Create quadruple for the DRAWPOLYGON predefined function
+    quad = Quadruple(quadCounter, 'DRAWPOLYGON', predefParamStack.items, color, None)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+    # Increment quadCounter
+    quadCounter += 1
+
+    # Reset parameter stack and color
+    predefParamStack = Stack()
+    color = ""
+
+def accessDimenVariable(p):
+    global dimenSupLim
+
+    # Get the dimensional variable name
+    varId = p[-3]
+
+    # Get the superior limit of the variable
+    dimension = functionsDirectory.getVariableDimension(currentScope, varId)
+
+    # Check if variable is local or not
+    if dimension is None:
+        # Get the superior limit of the variable
+        dimension = functionsDirectory.getVariableDimension(globalScope, varId)
+        # Check if variable is global or not
+        if dimension is None:
+            errorVariableNotDeclared(p, varId)
+        else:
+            # Set global superior limit
+            dimenSupLim = dimension
+
+            print("accessDimenVariable", globalScope, dimension)
+    else:
+        # Set global superior limit
+        dimenSupLim = dimension
+
+        print("accessDimenVariable", currentScope, dimension)
+
+def dimenVariable(p):
+    global dimenVar
+
+    # Get dimensional variable
+    dimenVar = p[-2]
+
+def calculateDimen(p):
+    global dimenVar
+    global dimenSupLim
+
+    # Get index of dimensional variable
+    index = operandsStack.pop()
+    # Get index type of dimensional variable
+    indexType = typesStack.pop()
+
+    # Check if the index type is int or not
+    if indexType != 'int':
+        errorTypeMismatch(p)
+    else:
+        # Get the dimension size
+        dimenSize = memory.getValueByAddress(index)
+
+        print ('dimenSize', dimenSize)
+        # Get superior limit from the dimention size
+        dimenSupLim = dimenSize-1
+
+        print ('dimenSupLim', dimenSupLim)
+
+def validateIndex(p):
+    global quadCounter
+
+    # Get index of dimensional variable
+    index = operandsStack.pop()
+    # Get index type of dimensional variable
+    indexType = typesStack.pop()
+
+    # Check if the index type is int or not
+    if indexType != 'int':
+        errorArgumentsMissmatch(p)
+    else:
+        # Create quadruple for the VALIDATION
+        quad = Quadruple(quadCounter, 'VAL', index, 0, dimenSupLim)
+        # Add quad to QuadQueue
+        quadQueue.enqueue(quad)
+        # Increment quadCounter
+        quadCounter += 1
+
+        # Get the base address of the dimensional variable
+        dimenVarBaseAddress = operandsStack.pop()
+        # Get the dimensional variable type
+        dimenVarType = typesStack.pop()
+        # Store de dimensional variable base address into memory
+        baseAddress = memory.storeTempToMemory(dimenVarBaseAddress, 'int')
+        # Store de dimensional variable base address into memory to get the actual address of the index
+        virtualAddress = memory.storeTempToMemory(dimenVarBaseAddress, dimenVarType)
+
+        # Create quadruple for the VALIDATION
+        quad = Quadruple(quadCounter, '+', index, baseAddress, virtualAddress)
+        # Add quad to QuadQueue
+        quadQueue.enqueue(quad)
+        # Increment quadCounter
+        quadCounter += 1
+
+        # Get the actual value of the indexed address
+        VAvalue = memory.memoryBlock[virtualAddress]
+        # Push indexed address to operands stack
+        operandsStack.push(VAvalue)
+        # Push dimensional variable type
+        typesStack.push(dimenVarType)
+
+        print(
+        "validateIndex", ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result),
+        "line: " + str(p.lexer.lineno))
 
 def endProgram(p):
+    global quadQueue
+
     # Create ending quad
     quad = Quadruple(quadCounter, "END", None, None, None)
     # Add quad to QuadQueue
@@ -1133,12 +1614,10 @@ def endProgram(p):
                           quad.result))
     print("Correct Sintax.\n\n")
 
+    print memory.memoryBlock
+
     # Show list of quadruples
-    print("LIST OF QUADRUPLES:")
-    while not quadQueue.isEmpty():
-        quad = quadQueue.dequeue()
-        print(("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
-                              quad.result))
+    quadQueue.printQueue()
 
 # Error functions
 def p_error(p):
@@ -1177,6 +1656,21 @@ def errorFunctionDoesNotExist(p, funcId):
     print('Error: Function ' + str(funcId) + ' does not exists in line ' + str(p.lexer.lineno))
     sys.exit()
 
+def errorArgumentTypeMissmatch(p):
+    print('Error: Argument type missmatch in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+def errorArgumentsMissmatch(p):
+    print('Error: Arguments missmatch function declaration in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+def errorCannotAllocate(p, varId):
+    print('Error: Can not allocate variable ' + str(varId) + ' in memory in line ' + str(p.lexer.lineno))
+    sys.exit()
+
+def errorNotReturnFunction(p):
+    print('Error: Function not returning anything in line ' + str(p.lexer.lineno))
+    sys.exit()
 
 # Build parser
 parser = yacc.yacc()
@@ -1184,6 +1678,8 @@ parser = yacc.yacc()
 #print("Filename or path: ")
 #filename = raw_input()
 
-file = open("../Tests/Test2", 'r')
+file = open("../Tests/TestArray", 'r')
 
 parser.parse(file.read())
+
+#vm = virtual_Machine(quadQueue, memory, functions_Directory, 'test')

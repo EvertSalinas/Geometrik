@@ -6,6 +6,17 @@ class vars_Table:
     def insertVariable(self, name, type, virtualAddress):
         self.variables[name] = [type, virtualAddress]
 
+    def addDimension(self, name, dimension):
+        self.variables[name].append({'dimension': dimension})
+
+    def getDimension(self, name):
+        if len(self.variables[name]) > 2:
+            variable = self.variables[name]
+            varAux = variable[2]
+            return varAux['dimension']
+        else:
+            return None
+
     # Check if variable exists
     def lookupVariable(self, name):
         return self.variables.has_key(name)

@@ -17,3 +17,13 @@ class Queue:
 
     def get(self, index):
         return self.items[index]
+
+    def printQueue(self):
+        print("LIST OF QUADRUPLES:")
+        i = 0
+        while i < len(self.items):
+            a = len(self.items) - i - 1
+            quad = self.get(a)
+            i += 1
+            print(("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+                   quad.result))
