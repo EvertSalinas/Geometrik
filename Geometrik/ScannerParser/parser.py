@@ -17,6 +17,7 @@ from VirtualMachine.VirtualMachine import virtual_Machine
 # Directories
 functionsDirectory = functions_Directory()
 semanticCube = semantic_Cube()
+funcReturn = {}
 
 # Memory
 memory = memory_Block()
@@ -50,11 +51,13 @@ dimenSupLim = 0
 color = ""
 endProcNumber = 0
 
+# Virtual Machine
+vm = None
 
 # Default Values
 defaultInt = 0
 defaultFloat = 0.0
-defaultBool = 'false'
+defaultBool = False
 defaultString = 'Null'
 
 # Validation variables
@@ -170,7 +173,7 @@ def p_store_variable(p):
 def p_ARRAY_DECLARATION(p):
     '''
     array_declaration : LBRACKET dimen_variable sexpression calculate_dimen RBRACKET
-          | empty
+                      | empty
     '''
 
 def p_dimen_variable(p):
@@ -215,12 +218,6 @@ def p_push_operator(p):
     '''
     # Push operator to stack
     pushOperator(p)
-
-def p_ARRAY_STRUCTURE(p):
-    '''
-    array_structure : LBRACKET sexpression RBRACKET
-                    | empty
-    '''
 
 def p_SEXPRESSION(p):
     '''
@@ -500,7 +497,7 @@ def p_WRITE(p):
 
 def p_READ(p):
     '''
-    read : ID push_id_operand array ASSIGN push_operator INPUT SEMICOLON
+    read : ID push_id_operand array ASSIGN push_operator INPUT LPAREN RPAREN SEMICOLON
     '''
     # Do Read quadruples
     doReadOperation(p)
@@ -543,7 +540,6 @@ def p_PREDEFINED(p):
                | drawsquare
                | drawtriangle
                | drawcircle
-               | drawcurve
                | drawpolygon
     '''
 
@@ -553,33 +549,27 @@ def p_DRAWLINE(p):
     '''
     drawLine(p)
 
+def p_DRAWCIRCLE(p):
+    '''
+    drawcircle : DRAWCIRCLE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color COMMA sexpression store_predefined_argument RPAREN SEMICOLON
+    '''
+    drawCircle(p)
+
 def p_DRAWSQUARE(p):
     '''
-    drawsquare : DRAWSQUARE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color RPAREN SEMICOLON
+    drawsquare : DRAWSQUARE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color COMMA sexpression store_predefined_argument RPAREN SEMICOLON
     '''
     drawSquare(p)
 
 def p_DRAWTRIANGLE(p):
     '''
-    drawtriangle : DRAWTRIANGLE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color RPAREN SEMICOLON
+    drawtriangle : DRAWTRIANGLE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color COMMA sexpression store_predefined_argument RPAREN SEMICOLON
     '''
     drawTriangle(p)
 
-def p_DRAWCIRCLE(p):
-    '''
-    drawcircle : DRAWCIRCLE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color RPAREN SEMICOLON
-    '''
-    drawCircle(p)
-
-def p_DRAWCURVE(p):
-    '''
-    drawcurve : DRAWCURVE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color RPAREN SEMICOLON
-    '''
-    drawCurve(p)
-
 def p_DRAWPOLYGON(p):
     '''
-    drawpolygon : DRAWPOLYGON LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color RPAREN SEMICOLON
+    drawpolygon : DRAWPOLYGON LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color COMMA sexpression store_predefined_argument RPAREN SEMICOLON
     '''
     drawPolygon(p)
 
@@ -800,6 +790,11 @@ def pushBoolOperand(p):
 
     # Get operand
     operand = p[-1]
+    if operand == 'true':
+        operand = True
+    elif operand == 'false':
+        operand = False
+
     # Store constant to memory and get virtual address
     virtualAddress = memory.storeConstantToMemory(operand, 'bool')
     # Push operand to operands stack
@@ -835,7 +830,7 @@ def doReadOperation(p):
     operator = operatorsStack.pop()
 
     # Create quadruple for Read operation
-    quad = Quadruple(quadCounter, 'input', type, None, operand)
+    quad = Quadruple(quadCounter, 'READ', type, None, operand)
     # Add quad to QuadQueue
     quadQueue.enqueue(quad)
     # Increment QuadCounter
@@ -851,9 +846,8 @@ def doWriteOperation(p):
     operand = operandsStack.pop()
     # Pop type from types stack
     popType = typesStack.pop()
-
     # Create quadruple for Write operation
-    quad = Quadruple(quadCounter, 'print', operand, None, None)
+    quad = Quadruple(quadCounter, 'WRITE', operand, None, None)
     # Add quad to QuadQueue
     quadQueue.enqueue(quad)
     # Increment QuadCounter
@@ -997,7 +991,7 @@ def doAssignOperation(p):
             errorTypeMismatch(p)
         else:
             # Create cuadruple for assignment
-            quad = Quadruple(quadCounter, operator, rightOperand, None, leftOperand) # Last parameter should be the VirtualAddress
+            quad = Quadruple(quadCounter, operator, rightOperand, None, leftOperand)
             # Add quad to QuadQueue
             quadQueue.enqueue(quad)
             # Increment QuadCounter
@@ -1179,9 +1173,9 @@ def storeParameter(p):
         # Add parameter type to the function
         functionsDirectory.addParameterType(currentScope, paramType)
         # Add parameter virtual address to the function
-        functionsDirectory.addParameterAddress(currentScope, paramId)
+        functionsDirectory.addParameterAddress(currentScope, virtualAddress)
 
-        print("storeParameter1", currentScope, functionsDirectory.getFunctionVariable(currentScope, paramId),
+        print("storeParameter1", currentScope, functionsDirectory.getFunctionVariable(currentScope, virtualAddress),
               "line: " + str(p.lexer.lineno))
         print("storeParameter2", currentScope, functionsDirectory.getParameterTypes(currentScope),
               "line: " + str(p.lexer.lineno))
@@ -1217,14 +1211,12 @@ def returnOperation(p):
         functionVariable = functionsDirectory.getFunctionVariable(globalScope, currentScope)
         # Get the function name
         functionId = functionVariable[0]
-
         # Check if the operands type is the same as the function type
         if type != functionType:
             errorReturnWrongType(p)
         else:
             # Create quadruple for the negation operation
-            quad = Quadruple(quadCounter, 'RETURN', operand, None,
-                             functionId)  # Last parameter should be the VirtualAddress
+            quad = Quadruple(quadCounter, 'RETURN', operand, None, functionId)
             # Add quad to QuadQueue
             quadQueue.enqueue(quad)
             # Push temporal variable to operands stack
@@ -1243,7 +1235,8 @@ def endProcess(p):
 
     # Get the functions type
     functionType = functionsDirectory.getFunctionType(currentScope)
-
+    # Save quad number to bie jumpfilled
+    funcReturn[currentScope] = quadCounter
     # Check if the functions type is void or not
     if functionType != 'void':
         # Check if the function has return or not
@@ -1286,7 +1279,6 @@ def generateEra(p):
 
     # Get the functions name
     funcId = p[-3]
-
     # Create quadruple for ERA operation
     quad = Quadruple(quadCounter,'ERA', funcId, None, None)
     # Add quad to QuadQueue
@@ -1326,7 +1318,7 @@ def validateArguments(p):
     else:
         while not argumentStack.isEmpty():
             # Create quadruple for ERA operation
-            quad = Quadruple(quadCounter, 'param', argumentStack.pop(), None, paramAddresses[argumCounter])
+            quad = Quadruple(quadCounter, 'PARAM', argumentStack.pop(), None, paramAddresses[argumCounter])
             # Add quad to QuadQueue
             quadQueue.enqueue(quad)
             # Increment QuadCounter
@@ -1339,20 +1331,35 @@ def validateArguments(p):
                    quad.result),
                   "line: " + str(p.lexer.lineno))
 
+        startQuad = functionsDirectory.getStartQuadNumber(calledFunction)
         # Create quadruple for the gosub operation
-        quad = Quadruple(quadCounter, 'gosub', calledFunction, None, None)
+        quad = Quadruple(quadCounter, 'gosub', calledFunction, None, startQuad)
         # Add quad to QuadQueue
         quadQueue.enqueue(quad)
         # Increment QuadCounter
         quadCounter += 1
-        # Get functions type
-        functionType = functionsDirectory.getFunctionType(calledFunction)
+
 
         print("validateArguments 2", currentScope,
               ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
                quad.result),
               "line: " + str(p.lexer.lineno))
 
+        # Get number of pending quad to fill
+        reverse = funcReturn[calledFunction]
+        # Get reverse position of Queue
+        quadNumber = (quadQueue.size()) - reverse
+        # Get quad to fill
+        quad = quadQueue.get(quadNumber)
+        # Full quads jump
+        quad.addJump(quadCounter)
+
+        print("validateArguments Filling jump",
+              ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result),
+              "line: " + str(p.lexer.lineno))
+
+        # Get functions type
+        functionType = functionsDirectory.getFunctionType(calledFunction)
         # Check if the functions is void or not
         if functionType == 'void':
             # Push Error Tag if the function is void
@@ -1364,12 +1371,8 @@ def validateArguments(p):
             funcVar = functionsDirectory.getFunctionVariable(globalScope, calledFunction)
             # Get variable virtual address
             varVirtualAddress = funcVar[1][1]
-            #.........func1..........
-            # Get functions Name
-            functionId = funcVar[0]
-
             # Push functions name to the operands stack
-            operandsStack.push(functionId)
+            operandsStack.push(varVirtualAddress)
             # Push functions type to the typesStack
             typesStack.push(functionType)
             # Increment Temporal Variables Counter
@@ -1390,7 +1393,7 @@ def storePredefinedArgument(p):
     type = typesStack.pop()
 
     # Check if the arguments are numeric or not
-    if type != 'int' and type != 'float':
+    if type != 'int' and type != 'float' and type != 'bool':
         errorArgumentTypeMissmatch(p)
     else:
         # Push predefined function parameter to the stack
@@ -1460,22 +1463,6 @@ def drawCircle(p):
 
     # Create quadruple for the DRAWCIRCLE predefined function
     quad = Quadruple(quadCounter, 'DRAWCIRCLE', predefParamStack.items, color, None)
-    # Add quad to QuadQueue
-    quadQueue.enqueue(quad)
-    # Increment quadCounter
-    quadCounter += 1
-
-    # Reset parameter stack and color
-    predefParamStack = Stack()
-    color = ""
-
-def drawCurve(p):
-    global color
-    global predefParamStack
-    global quadCounter
-
-    # Create quadruple for the DRAWCURVE predefined function
-    quad = Quadruple(quadCounter, 'DRAWCURVE', predefParamStack.items, color, None)
     # Add quad to QuadQueue
     quadQueue.enqueue(quad)
     # Increment quadCounter
@@ -1563,13 +1550,13 @@ def validateIndex(p):
     index = operandsStack.pop()
     # Get index type of dimensional variable
     indexType = typesStack.pop()
-
+    print memory.memoryBlock[index]
     # Check if the index type is int or not
     if indexType != 'int':
         errorArgumentsMissmatch(p)
     else:
-        # Create quadruple for the VALIDATION
-        quad = Quadruple(quadCounter, 'VAL', index, 0, dimenSupLim)
+        # Create quadruple for the VERIFICATION
+        quad = Quadruple(quadCounter, 'VER', index, 0, dimenSupLim)
         # Add quad to QuadQueue
         quadQueue.enqueue(quad)
         # Increment quadCounter
@@ -1584,17 +1571,14 @@ def validateIndex(p):
         # Store de dimensional variable base address into memory to get the actual address of the index
         virtualAddress = memory.storeTempToMemory(dimenVarBaseAddress, dimenVarType)
 
-        # Create quadruple for the VALIDATION
+        # Create quadruple to get indexed address
         quad = Quadruple(quadCounter, '+', index, baseAddress, virtualAddress)
         # Add quad to QuadQueue
         quadQueue.enqueue(quad)
         # Increment quadCounter
         quadCounter += 1
-
-        # Get the actual value of the indexed address
-        VAvalue = memory.memoryBlock[virtualAddress]
         # Push indexed address to operands stack
-        operandsStack.push(VAvalue)
+        operandsStack.push([virtualAddress])
         # Push dimensional variable type
         typesStack.push(dimenVarType)
 
@@ -1614,10 +1598,10 @@ def endProgram(p):
                           quad.result))
     print("Correct Sintax.\n\n")
 
-    print memory.memoryBlock
-
     # Show list of quadruples
-    quadQueue.printQueue()
+    #quadQueue.printQueue()
+
+    vm = virtual_Machine(quadQueue, memory, functionsDirectory, globalScope)
 
 # Error functions
 def p_error(p):
@@ -1678,8 +1662,6 @@ parser = yacc.yacc()
 #print("Filename or path: ")
 #filename = raw_input()
 
-file = open("../Tests/TestArray", 'r')
+file = open("../Tests/Test2", 'r')
 
 parser.parse(file.read())
-
-#vm = virtual_Machine(quadQueue, memory, functions_Directory, 'test')
