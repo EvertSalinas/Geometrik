@@ -204,6 +204,7 @@ class memory_Block:
             self.memoryBlock[virtualAddress] = value
         else:
             print 'Address is empty'
+
     def deleteValueByAddress(self, virtualAddress):
         if self.memoryBlock.has_key(virtualAddress):
             del self.memoryBlock[virtualAddress]

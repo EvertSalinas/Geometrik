@@ -76,8 +76,8 @@ class functions_Directory:
         return variable
 
     # Search by virtual address and return id if exists
-    def getFunctionIdByAddress(self, globalScopeName, virtualAddress):
-        function = self.functions[globalScopeName]
+    def getFunctionIdByAddress(self, scope, virtualAddress):
+        function = self.functions[scope]
         return function['variables'].getIdByAddress(virtualAddress)
 
     def addDimensionToVariable(self, functionName, variableName, dimension):

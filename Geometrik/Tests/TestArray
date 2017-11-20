@@ -6,9 +6,15 @@ var int a[5];
 
 function void func1(int h)
 {
+    g = 4;
+}
 
+function void func2(int h)
+{
+    g = 4;
 }
 
 int main() {
+    func2(1);
     func1(a[0]);
 }
