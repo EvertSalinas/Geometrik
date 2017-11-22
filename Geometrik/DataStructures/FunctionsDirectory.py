@@ -18,10 +18,12 @@ class functions_Directory:
         function = self.functions[functionName]
         return function['type']
 
+    # Return the starting quad number of a function
     def getStartQuadNumber(self, functionName):
         function = self.functions[functionName]
         return function['startQuadNumber']
 
+    # Save the starting quad number of a function
     def setStartQuadNumber(self, functionName, startQuadNumber):
         if self.lookupFunction(functionName):
             function = self.functions[functionName]
@@ -80,10 +82,12 @@ class functions_Directory:
         function = self.functions[scope]
         return function['variables'].getIdByAddress(virtualAddress)
 
+    # Add dimension to a variable
     def addDimensionToVariable(self, functionName, variableName, dimension):
         function = self.functions[functionName]
         function['variables'].addDimension(variableName, dimension)
 
+    # Return dimension from a variable
     def getVariableDimension(self, functionName, variableName):
         function = self.functions[functionName]
         return function['variables'].getDimension(variableName)

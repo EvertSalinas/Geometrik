@@ -49,7 +49,6 @@ dimenSupLim = 0
 
 # Global variables
 color = ""
-endProcNumber = 0
 
 # Virtual Machine
 vm = None
@@ -541,6 +540,7 @@ def p_PREDEFINED(p):
                | drawtriangle
                | drawcircle
                | drawpolygon
+               | drawitc
     '''
 
 def p_DRAWLINE(p):
@@ -563,7 +563,7 @@ def p_DRAWSQUARE(p):
 
 def p_DRAWTRIANGLE(p):
     '''
-    drawtriangle : DRAWTRIANGLE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color COMMA sexpression store_predefined_argument RPAREN SEMICOLON
+    drawtriangle : DRAWTRIANGLE LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument RPAREN SEMICOLON
     '''
     drawTriangle(p)
 
@@ -572,6 +572,12 @@ def p_DRAWPOLYGON(p):
     drawpolygon : DRAWPOLYGON LPAREN sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA sexpression store_predefined_argument COMMA color store_color COMMA sexpression store_predefined_argument RPAREN SEMICOLON
     '''
     drawPolygon(p)
+
+def p_DRAWITC(p):
+    '''
+    drawitc : DRAWITC LPAREN color store_color RPAREN SEMICOLON
+    '''
+    drawItc(p)
 
 def p_store_predefined_argument(p):
     '''
@@ -1054,6 +1060,7 @@ def pushCycleJump(p):
 
     # Push quad to be jumpfilled
     jumpsStack.push(quadCounter)
+    print('pushCycleJump', jumpsStack.top())
 
 def doCycleOperations(p):
     global quadCounter
@@ -1074,6 +1081,8 @@ def doCycleOperations(p):
         quadQueue.enqueue(quad)
         # Push quad to be jumpfilled
         jumpsStack.push(quadCounter - 1)
+        print('doCycleOperations', jumpsStack.top())
+        print('doCycleOperations', jumpsStack.items)
         # Increment QuadCounter
         quadCounter += 1
 
@@ -1085,8 +1094,10 @@ def doEndCycleOperations(p):
 
     # Get number of pending quad to fill
     end = jumpsStack.pop()
+    print('........end', end)
     # Get number of quad to return
     retrn = jumpsStack.pop()
+    print('........end', retrn)
     # Get reverse position of Queue
     quadNumber = (quadQueue.size() - 1) - end
     # Get reverse position of Queue
@@ -1095,7 +1106,7 @@ def doEndCycleOperations(p):
     endQuad = quadQueue.get(quadNumber)
 
     # Create quadruple to return in cycle
-    quad = Quadruple(quadCounter, 'goto', None, None, returnJump)
+    quad = Quadruple(quadCounter, 'goto', None, None, end)
     # Add quad to QuadQueue
     quadQueue.enqueue(quad)
     # Increment QuadCounter
@@ -1209,18 +1220,17 @@ def returnOperation(p):
         type = typesStack.pop()
         # Get the returning functions variable
         functionVariable = functionsDirectory.getFunctionVariable(globalScope, currentScope)
-        # Get the function name
-        functionId = functionVariable[0]
+        funcVirtualAddress = functionVariable[1][1]
         # Check if the operands type is the same as the function type
         if type != functionType:
             errorReturnWrongType(p)
         else:
             # Create quadruple for the negation operation
-            quad = Quadruple(quadCounter, 'RETURN', operand, None, functionId)
+            quad = Quadruple(quadCounter, 'RETURN', operand, None, funcVirtualAddress)
             # Add quad to QuadQueue
             quadQueue.enqueue(quad)
             # Push temporal variable to operands stack
-            operandsStack.push(functionId)
+            operandsStack.push(funcVirtualAddress)
             # Push temporal variables type to types stack
             typesStack.push(functionType)
             # Increment QuadCounter
@@ -1258,6 +1268,7 @@ def endProcess(p):
         quadCounter += 1
 
     # When function ends, clear temporal memory
+
     memory.clearTempMemory()
 
 def checkFunctionExistance(p):
@@ -1307,7 +1318,6 @@ def validateArguments(p):
     global calledFunction
     global quadCounter
     global argumCounter
-    global endProcNumber
 
     # Get the list of parameter addresses
     paramAddresses = functionsDirectory.getParameterAddresses(calledFunction)
@@ -1343,19 +1353,6 @@ def validateArguments(p):
         print("validateArguments 2", currentScope,
               ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
                quad.result),
-              "line: " + str(p.lexer.lineno))
-
-        # Get number of pending quad to fill
-        reverse = funcReturn[calledFunction]
-        # Get reverse position of Queue
-        quadNumber = (quadQueue.size()) - reverse
-        # Get quad to fill
-        quad = quadQueue.get(quadNumber)
-        # Full quads jump
-        quad.addJump(quadCounter)
-
-        print("validateArguments Filling jump",
-              ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand, quad.result),
               "line: " + str(p.lexer.lineno))
 
         # Get functions type
@@ -1488,28 +1485,43 @@ def drawPolygon(p):
     predefParamStack = Stack()
     color = ""
 
+def drawItc(p):
+    global color
+    global quadCounter
+
+    # Create quadruple for the DRAWPOLYGON predefined function
+    quad = Quadruple(quadCounter, 'DRAWITC', None, color, None)
+    # Add quad to QuadQueue
+    quadQueue.enqueue(quad)
+    # Increment quadCounter
+    quadCounter += 1
+
+    # Reset parameter stack and color
+    color = ""
+
 def accessDimenVariable(p):
     global dimenSupLim
 
     # Get the dimensional variable name
     varId = p[-3]
+    print varId
 
     # Get the superior limit of the variable
-    dimension = functionsDirectory.getVariableDimension(currentScope, varId)
-
-    # Check if variable is local or not
-    if dimension is None:
-        # Get the superior limit of the variable
-        dimension = functionsDirectory.getVariableDimension(globalScope, varId)
-        # Check if variable is global or not
-        if dimension is None:
+    functionLocal = functionsDirectory.functions[currentScope]
+    varTableLocal = functionLocal['variables']
+    if not varTableLocal.lookupVariable(varId):
+        functionGlobal = functionsDirectory.functions[globalScope]
+        varTableGlobal = functionGlobal['variables']
+        if not varTableGlobal.lookupVariable(varId):
             errorVariableNotDeclared(p, varId)
         else:
+            dimension = functionsDirectory.getVariableDimension(globalScope, varId)
             # Set global superior limit
             dimenSupLim = dimension
 
             print("accessDimenVariable", globalScope, dimension)
     else:
+        dimension = functionsDirectory.getVariableDimension(currentScope, varId)
         # Set global superior limit
         dimenSupLim = dimension
 
@@ -1601,7 +1613,7 @@ def endProgram(p):
     # Show list of quadruples
     #quadQueue.printQueue()
 
-    vm = virtual_Machine(quadQueue, memory, functionsDirectory, globalScope)
+    vm = virtual_Machine(quadQueue, memory, functionsDirectory)
 
 # Error functions
 def p_error(p):
@@ -1659,9 +1671,9 @@ def errorNotReturnFunction(p):
 # Build parser
 parser = yacc.yacc()
 
-#print("Filename or path: ")
-#filename = raw_input()
+print("Introduce el nombre del archivo: ")
+filename = raw_input()
 
-file = open("../Tests/Test2", 'r')
+file = open("../Tests/"+str(filename), 'r')
 
 parser.parse(file.read())

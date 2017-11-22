@@ -1,0 +1,71 @@
+program sort;
+
+var int intArray[5];
+var int cont;
+var int c1;
+var int c2;
+var int temp;
+var int size;
+var bool esta;
+var int a;
+var int posicion;
+
+int main() {
+
+    size = 5;
+    print('Introduzca valores del arreglo:');
+    while(cont < size) {
+        intArray[cont] = input();
+        cont = cont + 1;
+    }
+
+    cont = 0;
+    print('Arreglo con input:');
+    while(cont < size) {
+        print(intArray[cont]);
+        cont = cont + 1;
+    }
+
+    c1 = 0;
+    c2 = 1;
+    while(c1 < size) {
+        while(c2 < size) {
+            if(intArray[c1] > intArray[c2]) {
+                temp = intArray[c1];
+                intArray[c1] = intArray[c2];
+                intArray[c2] = temp;
+            }
+            c2 = c2 + 1;
+        }
+        c1 = c1 + 1;
+        c2 = c1 + 1;
+
+    }
+
+    cont = 0;
+    print('Arreglo ordenado:');
+    while(cont < size) {
+        print(intArray[cont]);
+        cont = cont + 1;
+    }
+
+    print('Cual valor desea buscar:');
+    esta = false;
+    a = input();
+    posicion = -1;
+    c1 = 0;
+    while(c1 < size) {
+        if(intArray[c1] == a) {
+            posicion = c1;
+        }
+        c1 = c1 + 1;
+    }
+
+    if(posicion != -1) {
+        print('La posicion del numero es:');
+        print(posicion);
+    }else {
+        print('El numero no se encuentra en el arreglo');
+    }
+
+}
