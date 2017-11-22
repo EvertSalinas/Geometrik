@@ -1,0 +1,17 @@
+program prueba;
+
+var bool aprobado;
+
+function void drawheart(bool b) {
+    if(b == true) {
+        DrawCircle(0, 0, 20, Red, true);
+        DrawCircle(40, 0, 20, Red, true);
+        DrawTriangle(-20, 17, 80, Red, true, 1);
+    }
+}
+
+int main() {
+    aprobado = true;
+    drawheart(aprobado);
+    DrawItc(Red);
+}

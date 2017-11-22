@@ -5,7 +5,7 @@ tokens = ['ID', 'PLUS', 'MINUS', 'TIMES', 'DEVIDE', #Operators
           'ASSIGN', 'EQUAL', 'NOTEQUAL', 'GREATER', 'LESSER', # Operators
           'GREATEROREQUAL', 'LESSEROREQUAL', 'AND', 'OR', 'NOT', # Operators
           'LPAREN', 'RPAREN', 'LBRACKET', 'RBRACKET', 'LBRACE', 'RBRACE', # Delimiters
-          'COMMA', 'COLON', 'SEMICOLON', # Delimiters
+          'COMMA', 'SEMICOLON', # Delimiters
           'INT', 'STRING', 'FLOAT',
 ]
 
@@ -21,13 +21,12 @@ reserved = {
     'true': 'TRUE',
     'false': 'FALSE',
     'program': 'PROGRAM',
-    'break': 'BREAK',
     'DrawCircle': 'DRAWCIRCLE',
     'DrawLine': 'DRAWLINE',
     'DrawTriangle': 'DRAWTRIANGLE',
     'DrawSquare': 'DRAWSQUARE',
     'DrawPolygon': 'DRAWPOLYGON',
-    'DrawCurve': 'DRAWCURVE',
+    'DrawItc': 'DRAWITC',
     'Red': 'RED',
     'Green': 'GREEN',
     'Blue': 'BLUE',
@@ -70,7 +69,6 @@ t_RBRACKET = r'\]'
 t_LBRACE = r'\{'
 t_RBRACE = r'\}'
 t_COMMA = r'\,'
-t_COLON = r'\:'
 t_SEMICOLON = r'\;'
 t_STRING = r'\".*\" | \'.*\''
 

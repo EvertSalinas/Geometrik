@@ -1,0 +1,38 @@
+program prueba;
+
+var int a;
+
+function int func1(int n)
+{
+    if(n <= 1) {
+        return n;
+    }
+    else {
+        return func1(n - 1) + func1(n - 2);
+    }
+}
+
+function int fibonacci(int n)
+var int fibo1;
+var int fibo2;
+{
+    fibo1 = 1;
+    fibo2 =2;
+    if (n == 0) {
+        return 0;
+    }
+
+    if (n == 1) {
+        return 1;
+    }
+
+    fibo1 = fibonacci(n - 1);
+    fibo2 = fibonacci(n - 2);
+
+    return (fibo1 + fibo2);
+}
+
+
+int main() {
+    print(func1(5));
+}

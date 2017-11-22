@@ -1,0 +1,40 @@
+program prueba;
+
+int main() {
+    #Nieve
+    DrawPolygon(-100,0,10,100, Red, true);
+    DrawPolygon(-100,0,9,100, Green, true);
+    DrawPolygon(-100,0,8,100, Blue, true);
+    DrawPolygon(-100,0,7,100, Red, true);
+    DrawPolygon(-100,0,6,100, Green, true);
+    DrawPolygon(-100,0,5,100, Blue, true);
+
+    # Cono
+    DrawTriangle(-150,35,200, Yellow, true,1);
+    DrawTriangle(-150,35,200, Black, false,1);
+    DrawLine(-100, -50, -26, -100, Brown);
+    DrawLine(-150, 35, 0, -50, Brown);
+    DrawLine(-50, 35, 25, -5, Brown);
+
+    # Cabeza
+    DrawCircle(250, 0, 50, Brown, true);
+    DrawCircle(230, 55, 10, Yellow, true);
+    DrawCircle(270, 55, 10, Yellow, true);
+    DrawLine(225, 30, 240, 20, Yellow);
+    DrawLine(240, 20, 260, 20, Yellow);
+    DrawLine(260, 20, 275, 30, Yellow);
+
+    # Cuerpo
+    DrawLine(250, 0, 250, -125, Brown);
+    # Piernas
+    DrawLine(250, -125, 210, -200, Brown);
+    DrawLine(250, -125, 290, -200, Brown);
+    # Brazos
+    DrawLine(250, -40, 25, 0, Brown);
+    DrawLine(250, -40, 290, -100, Brown);
+
+    #Sombrero
+    DrawSquare(215, 85, 70, Black, true);
+    DrawLine(180, 85, 320, 85, Black);
+
+}
