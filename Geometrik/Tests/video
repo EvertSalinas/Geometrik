@@ -10,8 +10,8 @@ int main() {
     DrawPolygon(-100,0,5,100, Blue, true);
 
     # Cono
-    DrawTriangle(-150,35,200, Yellow, true,1);
-    DrawTriangle(-150,35,200, Black, false,1);
+    DrawTriangle(-150,35,200, Yellow, true, 1);
+    DrawTriangle(-150,35,200, Black, false, 1);
     DrawLine(-100, -50, -26, -100, Brown);
     DrawLine(-150, 35, 0, -50, Brown);
     DrawLine(-50, 35, 25, -5, Brown);
@@ -36,5 +36,4 @@ int main() {
     #Sombrero
     DrawSquare(215, 85, 70, Black, true);
     DrawLine(180, 85, 320, 85, Black);
-
 }

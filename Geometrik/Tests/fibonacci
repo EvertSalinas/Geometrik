@@ -12,27 +12,7 @@ function int func1(int n)
     }
 }
 
-function int fibonacci(int n)
-var int fibo1;
-var int fibo2;
-{
-    fibo1 = 1;
-    fibo2 =2;
-    if (n == 0) {
-        return 0;
-    }
-
-    if (n == 1) {
-        return 1;
-    }
-
-    fibo1 = fibonacci(n - 1);
-    fibo2 = fibonacci(n - 2);
-
-    return (fibo1 + fibo2);
-}
-
 
 int main() {
-    print(func1(5));
+    print(func1(4));
 }

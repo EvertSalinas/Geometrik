@@ -36,12 +36,13 @@ operatorsStack = Stack()
 operandsStack = Stack()
 typesStack = Stack()
 jumpsStack = Stack()
-argumentStack = Stack()
-argumTypeStack = Stack()
+returnStack = Stack()
 predefParamStack = Stack()
 
 # Queues
 quadQueue = Queue()
+argumentQueue = Queue()
+argumTypeQueue = Queue()
 
 # Dimension management variables
 dimenVar = ""
@@ -49,6 +50,8 @@ dimenSupLim = 0
 
 # Global variables
 color = ""
+endprocnumber = 0
+returns = 0
 
 # Virtual Machine
 vm = None
@@ -1094,10 +1097,8 @@ def doEndCycleOperations(p):
 
     # Get number of pending quad to fill
     end = jumpsStack.pop()
-    print('........end', end)
     # Get number of quad to return
     retrn = jumpsStack.pop()
-    print('........end', retrn)
     # Get reverse position of Queue
     quadNumber = (quadQueue.size() - 1) - end
     # Get reverse position of Queue
@@ -1188,7 +1189,7 @@ def storeParameter(p):
 
         print("storeParameter1", currentScope, functionsDirectory.getFunctionVariable(currentScope, virtualAddress),
               "line: " + str(p.lexer.lineno))
-        print("storeParameter2", currentScope, functionsDirectory.getParameterTypes(currentScope),
+        print("storeParameter2", currentScope, functionsDirectory.getParameterAddresses(currentScope),
               "line: " + str(p.lexer.lineno))
 
 def addFunctionQuadStart(p):
@@ -1204,6 +1205,8 @@ def addFunctionQuadStart(p):
 def returnOperation(p):
     global quadCounter
     global functionWithReturn
+    global endprocnumber
+    global returns
 
     # Get the functions type
     functionType = functionsDirectory.getFunctionType(currentScope)
@@ -1225,8 +1228,10 @@ def returnOperation(p):
         if type != functionType:
             errorReturnWrongType(p)
         else:
+            returns += 1
+            returnStack.push(quadCounter)
             # Create quadruple for the negation operation
-            quad = Quadruple(quadCounter, 'RETURN', operand, None, funcVirtualAddress)
+            quad = Quadruple(quadCounter, 'RETURN', operand, funcVirtualAddress, None)
             # Add quad to QuadQueue
             quadQueue.enqueue(quad)
             # Push temporal variable to operands stack
@@ -1242,11 +1247,28 @@ def returnOperation(p):
 
 def endProcess(p):
     global quadCounter
-
+    global returns
+    print('returns.........', returns)
     # Get the functions type
     functionType = functionsDirectory.getFunctionType(currentScope)
     # Save quad number to bie jumpfilled
     funcReturn[currentScope] = quadCounter
+    # Save
+    endprocnumber = quadCounter
+    for i in range(0, returns):
+        # Get number of pending quad to fill
+        end = returnStack.pop()
+        # Get reverse position of Queue
+        quadNumber = (quadQueue.size()) - end
+        # Get quad to fill
+        quad = quadQueue.get(quadNumber)
+        # Full quads jump
+        quad.addJump(quadCounter)
+        print("endProcess", currentScope,
+          ("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+           quad.result),
+          "line: " + str(p.lexer.lineno))
+
     # Check if the functions type is void or not
     if functionType != 'void':
         # Check if the function has return or not
@@ -1267,8 +1289,8 @@ def endProcess(p):
         # Increment QuadCounter
         quadCounter += 1
 
+    returns = 0
     # When function ends, clear temporal memory
-
     memory.clearTempMemory()
 
 def checkFunctionExistance(p):
@@ -1308,13 +1330,13 @@ def storeArgument(p):
     # Get the argument type
     argumentType = typesStack.pop()
     # Push the argument to the argument stack
-    argumentStack.push(argument)
+    argumentQueue.enqueue(argument)
     # Push the argument type to the argument type stack
-    argumTypeStack.push(argumentType)
+    argumTypeQueue.enqueue(argumentType)
 
 def validateArguments(p):
-    global argumentStack
-    global argumTypeStack
+    global argumentQueue
+    global argumTypeQueue
     global calledFunction
     global quadCounter
     global argumCounter
@@ -1323,12 +1345,12 @@ def validateArguments(p):
     paramAddresses = functionsDirectory.getParameterAddresses(calledFunction)
 
     # Check if the arguments of the call are the same than the functions declaration
-    if not functionsDirectory.validateParameters(calledFunction, argumTypeStack.items):
+    if not functionsDirectory.validateParameters(calledFunction, argumTypeQueue.items):
         errorArgumentsMissmatch(p)
     else:
-        while not argumentStack.isEmpty():
+        while not argumentQueue.isEmpty():
             # Create quadruple for ERA operation
-            quad = Quadruple(quadCounter, 'PARAM', argumentStack.pop(), None, paramAddresses[argumCounter])
+            quad = Quadruple(quadCounter, 'PARAM', argumentQueue.dequeue(), None, paramAddresses[argumCounter])
             # Add quad to QuadQueue
             quadQueue.enqueue(quad)
             # Increment QuadCounter
@@ -1376,8 +1398,8 @@ def validateArguments(p):
             print("validateArguments 3", currentScope, "line: " + str(p.lexer.lineno))
 
         # Clear arguments elements
-        argumentStack = Stack()
-        argumTypeStack = Stack()
+        argumentQueue = Queue()
+        argumTypeQueue = Queue()
         calledFunction = ""
         argumCounter = 0
 
