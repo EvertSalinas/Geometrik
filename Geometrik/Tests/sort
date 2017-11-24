@@ -9,6 +9,28 @@ var int size;
 var bool esta;
 var int a;
 var int posicion;
+var int mid;
+
+function int binarySearch(int first, int last, int number)
+{
+    #print(intArray[mid]);
+    if (first <= last) {
+        mid = (first + last) / 2;
+        #print(intArray[mid]);
+
+        if (number == intArray[mid]) {
+            return mid;
+        }
+
+        if (number < intArray[mid]) {
+            return binarySearch(first, (mid - 1), number);
+        } else {
+            return binarySearch((mid + 1), last, number);
+        }
+    }
+
+    return -1;
+}
 
 int main() {
 
@@ -49,17 +71,7 @@ int main() {
         cont = cont + 1;
     }
 
-    print('Cual valor desea buscar:');
-    esta = false;
-    a = input();
-    posicion = -1;
-    c1 = 0;
-    while(c1 < size) {
-        if(intArray[c1] == a) {
-            posicion = c1;
-        }
-        c1 = c1 + 1;
-    }
+    posicion = binarySearch(0, (size - 1), 5);
 
     if(posicion != -1) {
         print('La posicion del numero es:');

@@ -328,6 +328,7 @@ class virtual_Machine:
             elif quad.operator == 'gotof':
                 #print("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
                 #      quad.result)
+
                 leftOperandValue = self.memory.getValueByAddress(leftOperand)
                 if leftOperandValue == False:
                     instructionPointer = resultAddress - 2
@@ -347,13 +348,14 @@ class virtual_Machine:
 
                 #print ('leftoperand',self.memory.getValueByAddress(resultAddress))
 
-                self.memory.modifyValueByAddress(resultAddress, leftOperandValue)
+                self.memory.modifyValueByAddress(rightOperand, leftOperandValue)
+                instructionPointer = resultAddress - 2
 
                 #print ('resultAddress',self.memory.getValueByAddress(resultAddress))
 
             elif quad.operator == 'ENDPROC':
                 #print("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
-                #      quad.result)
+                # quad.result)
 
                 if not functionsStack.isEmpty():
                     functionName = functionsStack.pop()
@@ -370,8 +372,8 @@ class virtual_Machine:
                 instructionPointer = savedIPs.pop() - 1
 
             elif quad.operator == 'ERA':
-                # print("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
-                # quad.result)
+                #print("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
+                #quad.result)
 
                 function = self.functionsDirectory.functions[leftOperand]
                 varTable = function['variables']
@@ -405,7 +407,7 @@ class virtual_Machine:
 
             elif quad.operator == 'PARAM':
                 #print("Quad " + str(quad.quad_number), quad.operator, quad.left_operand, quad.right_operand,
-                 #     quad.result)
+                #      quad.result)
 
                 leftOperandValue = self.memory.getValueByAddress(leftOperand)
                 #print ('Left Operand Value', leftOperandValue)
